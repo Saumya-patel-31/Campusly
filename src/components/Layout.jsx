@@ -97,7 +97,7 @@ export default function Layout({ children }) {
         display: isMobile ? 'none' : 'flex',
         width:'var(--sidebar-w)', flexShrink:0,
         borderRight: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(14,10,36,0.09)',
-        display:'flex', flexDirection:'column',
+        flexDirection:'column',
         padding:'22px 12px',
         position:'sticky', top:0, height:'100vh',
         overflowY:'auto',
