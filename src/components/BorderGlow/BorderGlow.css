@@ -1,0 +1,118 @@
+.border-glow-card {
+  --edge-proximity: 0;
+  --cursor-angle: 45deg;
+  --edge-sensitivity: 30;
+  --color-sensitivity: calc(var(--edge-sensitivity) + 20);
+  --border-radius: 20px;
+  --glow-padding: 40px;
+  --cone-spread: 25;
+
+  position: relative;
+  border-radius: var(--border-radius);
+  isolation: isolate;
+  transform: translate3d(0, 0, 0.01px);
+  display: grid;
+  /* Base border — always visible, subtle */
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: transparent;
+  overflow: visible;
+}
+
+/* All pseudo-elements sit BEHIND the content */
+.border-glow-card::before,
+.border-glow-card::after,
+.border-glow-card > .edge-light {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  transition: opacity 0.25s ease-out;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Fade out when idle */
+.border-glow-card:not(:hover):not(.sweep-active)::before,
+.border-glow-card:not(:hover):not(.sweep-active)::after,
+.border-glow-card:not(:hover):not(.sweep-active) > .edge-light {
+  opacity: 0;
+  transition: opacity 0.6s ease-in-out;
+}
+
+/* ── Gradient border cone — the main colored border glow ── */
+.border-glow-card::before {
+  /* Transparent padding-box so interior isn't painted */
+  border: 1.5px solid transparent;
+  background:
+    /* padding-box = fully transparent, so no fill inside the card */
+    linear-gradient(transparent 0 100%) padding-box,
+    /* border-box = the colored gradient only on the border itself */
+    var(--gradient-one,   radial-gradient(at 80% 55%, #a78bfa 0px, transparent 50%)) border-box,
+    var(--gradient-two,   radial-gradient(at 69% 34%, #f472b6 0px, transparent 50%)) border-box,
+    var(--gradient-three, radial-gradient(at  8%  6%, #60a5fa 0px, transparent 50%)) border-box,
+    var(--gradient-four,  radial-gradient(at 41% 38%, #a78bfa 0px, transparent 50%)) border-box,
+    var(--gradient-five,  radial-gradient(at 86% 85%, #f472b6 0px, transparent 50%)) border-box,
+    var(--gradient-six,   radial-gradient(at 82% 18%, #60a5fa 0px, transparent 50%)) border-box,
+    var(--gradient-seven, radial-gradient(at 51%  4%, #a78bfa 0px, transparent 50%)) border-box,
+    var(--gradient-base,  linear-gradient(#a78bfa 0 100%)) border-box;
+
+  opacity: calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
+
+  /* Only show the cone near the cursor */
+  mask-image: conic-gradient(
+    from var(--cursor-angle) at center,
+    black calc(var(--cone-spread) * 1%),
+    transparent calc((var(--cone-spread) + 15) * 1%),
+    transparent calc((100 - var(--cone-spread) - 15) * 1%),
+    black calc((100 - var(--cone-spread)) * 1%)
+  );
+}
+
+/* ── Disable the fill pseudo-element entirely ── */
+/* We do NOT want any background fill — just the border glow */
+.border-glow-card::after {
+  display: none;
+}
+
+/* ── Outer glow rays ── */
+.border-glow-card > .edge-light {
+  inset: calc(var(--glow-padding) * -1);
+  z-index: 1;
+
+  mask-image: conic-gradient(
+    from var(--cursor-angle) at center,
+    black 2.5%, transparent 10%, transparent 90%, black 97.5%
+  );
+
+  opacity: calc((var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity)));
+  mix-blend-mode: plus-lighter;
+}
+
+.border-glow-card > .edge-light::before {
+  content: "";
+  position: absolute;
+  inset: var(--glow-padding);
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px var(--glow-color, hsl(258deg 80% 70% / 100%)),
+    inset 0 0 3px 0   var(--glow-color-50, hsl(258deg 80% 70% / 50%)),
+    inset 0 0 8px 0   var(--glow-color-40, hsl(258deg 80% 70% / 40%)),
+    inset 0 0 18px 0  var(--glow-color-30, hsl(258deg 80% 70% / 30%)),
+    inset 0 0 32px 2px var(--glow-color-20, hsl(258deg 80% 70% / 20%)),
+    inset 0 0 56px 2px var(--glow-color-10, hsl(258deg 80% 70% / 10%)),
+    0 0 3px 0   var(--glow-color-50, hsl(258deg 80% 70% / 50%)),
+    0 0 8px 0   var(--glow-color-40, hsl(258deg 80% 70% / 40%)),
+    0 0 18px 0  var(--glow-color-30, hsl(258deg 80% 70% / 30%)),
+    0 0 32px 2px var(--glow-color-20, hsl(258deg 80% 70% / 20%)),
+    0 0 56px 2px var(--glow-color-10, hsl(258deg 80% 70% / 10%));
+}
+
+/* ── Inner wrapper — carries the glass background above glow layers ── */
+.border-glow-inner {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  border-radius: calc(var(--border-radius) - 1px);
+  z-index: 2;
+}

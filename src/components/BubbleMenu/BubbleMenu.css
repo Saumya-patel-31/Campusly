@@ -1,0 +1,95 @@
+.bubble-toggle {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+}
+.bubble-toggle:hover { transform: scale(1.08); background: rgba(255,255,255,0.18); }
+
+.bline {
+  width: 22px; height: 1.5px;
+  background: rgba(255,255,255,0.85);
+  border-radius: 2px;
+  display: block;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  transform-origin: center;
+}
+.bline.short { width: 14px; }
+
+.bubble-toggle.open .bline:first-child { transform: translateY(3px) rotate(45deg); width: 22px; }
+.bubble-toggle.open .bline.short { transform: translateY(-3px) rotate(-45deg); width: 22px; }
+
+.bubble-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0 28px 90px 0;
+  background: rgba(0,0,0,0.2);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.bubble-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.bubble-item {
+  animation: slideUp 0.3s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+.bubble-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  white-space: nowrap;
+  font-family: inherit;
+}
+.bubble-pill:hover {
+  background: var(--pill-color, #a78bfa);
+  border-color: transparent;
+  transform: scale(1.04) translateX(-4px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+.bubble-pill:active { transform: scale(0.97); }
+
+.bubble-icon { font-size: 18px; }
