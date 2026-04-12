@@ -17,7 +17,6 @@ import CampusMap    from './pages/CampusMap.jsx'
 import StudyBuddy   from './pages/StudyBuddy.jsx'
 import LostFound    from './pages/LostFound.jsx'
 import MoodBoard      from './pages/MoodBoard.jsx'
-import Notifications  from './pages/Notifications.jsx'
 import DailyGames     from './pages/DailyGames.jsx'
 import Marketplace    from './pages/Marketplace.jsx'
 import Info           from './pages/Info.jsx'
@@ -89,7 +88,6 @@ function AppRoutes() {
       <Route path="/study-buddy"       element={<StudyBuddy />} />
       <Route path="/lost-found"        element={<LostFound />} />
       <Route path="/mood"              element={<MoodBoard />} />
-      <Route path="/notifications"    element={<Notifications />} />
       <Route path="/games"            element={<DailyGames />} />
       <Route path="/marketplace"      element={<Marketplace />} />
       <Route path="/info"             element={<Info />} />

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 
 let _sidebarScrollTop = 0
 import { useAuth } from '../context/useAuth.js'
-import { useNotifications } from '../hooks/useNotifications.js'
+import { useConversations } from '../hooks/useMessages.js'
 import { useTheme } from '../context/ThemeContext.jsx'
 import { useIsMobile } from '../hooks/useIsMobile.js'
 import BubbleMenu from './BubbleMenu/BubbleMenu.jsx'
@@ -13,7 +13,8 @@ export default function Layout({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { profile, logout } = useAuth()
-  const { unreadCount } = useNotifications(profile?.id)
+  const { conversations } = useConversations(profile?.id)
+  const unreadMessages = conversations.reduce((sum, c) => sum + (c.unread || 0), 0)
   const { isDark, toggle: toggleTheme } = useTheme()
   const isMobile = useIsMobile()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -56,8 +57,7 @@ export default function Layout({ children }) {
     { path:'/games',        label:'Daily Games',  icon: <GamesIco /> },
     { path:'/info',         label:'Campus Info',  icon: <InfoIco /> },
     { path:'/mood',         label:'Campus Pulse',icon: <MoodIco /> },
-    { path:'/messages',       label:'Messages',      icon: <MsgIco /> },
-    { path:'/notifications',  label:'Notifications', icon: <BellIco />, badge: unreadCount },
+    { path:'/messages',       label:'Messages',      icon: <MsgIco />, badge: unreadMessages },
     { path:'/profile',        label:'Profile',       icon: <ProfileIco /> },
   ]
 
@@ -74,8 +74,7 @@ export default function Layout({ children }) {
     { path:'/games',       label:'Daily Games',  icon:'🎮', color:'#a78bfa' },
     { path:'/info',        label:'Campus Info',  icon:'🎓', color:'#38bdf8' },
     { path:'/mood',        label:'Campus Pulse', icon:'🌡️', color:'#f43f5e' },
-    { path:'/messages',      label:'Messages',      icon:'✉',  color:'#f472b6' },
-    { path:'/notifications', label:'Notifications', icon:'🔔', color:'#f59e0b', badge: unreadCount },
+    { path:'/messages',      label:'Messages',      icon:'✉',  color:'#f472b6', badge: unreadMessages },
     { path:'/profile',       label:'Profile',       icon:'◯',  color:'#a78bfa' },
     { path:'logout',    label:'Sign out', icon:'↩', color:'#ff6b8a' },
   ]
@@ -191,10 +190,6 @@ export default function Layout({ children }) {
 
           {/* Right actions */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <button onClick={()=>navigate('/notifications')} style={{ background:'transparent', border:'none', cursor:'pointer', padding:6, position:'relative', color:'var(--text-2)', display:'flex', alignItems:'center' }}>
-              <BellIco />
-              {unreadCount > 0 && <span style={{ position:'absolute', top:2, right:2, width:8, height:8, borderRadius:'50%', background:'#f59e0b' }} />}
-            </button>
             <div onClick={()=>navigate('/profile')} style={{ cursor:'pointer' }}>
               <AvatarImg src={profile?.avatar_url} name={profile?.display_name} size={30} />
             </div>
