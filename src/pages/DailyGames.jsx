@@ -217,7 +217,10 @@ function WordleGame({ onComplete, userId }) {
         <div style={{ textAlign:'center', padding:'14px 24px', borderRadius:12, background: state.won ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', border:`1px solid ${state.won ? '#22c55e44' : '#ef444444'}` }}>
           <div style={{ fontSize:26, marginBottom:4 }}>{state.won ? '🎉' : '😔'}</div>
           <div style={{ fontFamily:'var(--font-display)', fontWeight:700, fontSize:15, color: state.won ? '#22c55e' : '#ef4444' }}>
-            {state.won ? `Solved in ${state.currentRow} ${state.currentRow === 1 ? 'try' : 'tries'}!` : `The word was: ${state.target}`}
+            {state.won ? `Solved in ${state.currentRow} ${state.currentRow === 1 ? 'try' : 'tries'}!` : 'Better luck tomorrow!'}
+          </div>
+          <div style={{ fontSize:13, color:'var(--text-2)', marginTop:6, letterSpacing:'0.08em' }}>
+            The word was <span style={{ fontWeight:700, color:'var(--text)', letterSpacing:'0.15em' }}>{state.target}</span>
           </div>
           {state.won && <div style={{ fontSize:12, color:'var(--text-3)', marginTop:4 }}>+{Math.max(10, 100-(state.currentRow-1)*15)} pts</div>}
         </div>
@@ -447,8 +450,13 @@ function QuizGame({ onComplete, userId }) {
               <div key={i} style={{ padding:'12px 16px', borderRadius:12, background: a.correct ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border:`1px solid ${a.correct ? '#22c55e33' : '#ef444433'}` }}>
                 <div style={{ fontSize:12, fontFamily:'var(--font-display)', marginBottom:4 }}>{q.q}</div>
                 <div style={{ fontSize:11, color: a.correct ? '#22c55e' : '#ef4444' }}>
-                  {a.correct ? '✓' : '✗'} {q.opts[a.chosen]} {!a.correct && <span style={{ color:'var(--text-3)' }}>· Correct: {q.opts[q.ans]}</span>}
+                  {a.correct ? '✓' : '✗'} {q.opts[a.chosen]}
                 </div>
+                {!a.correct && (
+                  <div style={{ fontSize:11, color:'var(--text-3)', marginTop:3 }}>
+                    Correct answer: <span style={{ color:'#22c55e', fontWeight:700 }}>{q.opts[q.ans]}</span>
+                  </div>
+                )}
               </div>
             )
           })}
