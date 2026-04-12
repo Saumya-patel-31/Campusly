@@ -5,6 +5,7 @@ let _sidebarScrollTop = 0
 import { useAuth } from '../context/useAuth.js'
 import { useNotifications } from '../hooks/useNotifications.js'
 import { useTheme } from '../context/ThemeContext.jsx'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 import BubbleMenu from './BubbleMenu/BubbleMenu.jsx'
 import { BackgroundPaths } from './ui/background-paths.jsx'
 
@@ -14,6 +15,7 @@ export default function Layout({ children }) {
   const { profile, logout } = useAuth()
   const { unreadCount } = useNotifications(profile?.id)
   const { isDark, toggle: toggleTheme } = useTheme()
+  const isMobile = useIsMobile()
   const sidebarRef = useRef(null)
 
   // Restore sidebar scroll position on mount, preserve it on scroll
@@ -87,11 +89,12 @@ export default function Layout({ children }) {
       {/* ── Animated background ── */}
       <BackgroundPaths />
 
-      {/* ── Sidebar ── */}
+      {/* ── Sidebar — hidden on mobile (BubbleMenu handles nav) ── */}
       <aside
         ref={sidebarRef}
         onScroll={e => { _sidebarScrollTop = e.currentTarget.scrollTop }}
         style={{
+        display: isMobile ? 'none' : 'flex',
         width:'var(--sidebar-w)', flexShrink:0,
         borderRight: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(14,10,36,0.09)',
         display:'flex', flexDirection:'column',
@@ -199,7 +202,7 @@ export default function Layout({ children }) {
       </aside>
 
       {/* ── Main ── */}
-      <main style={{ flex:1, minWidth:0, overflowY:'auto', overflowX:'hidden', position:'relative', zIndex:10, background:'transparent' }}>
+      <main style={{ flex:1, minWidth:0, overflowY:'auto', overflowX:'hidden', position:'relative', zIndex:10, background:'transparent', paddingBottom: isMobile ? 90 : 0 }}>
         {children}
       </main>
 

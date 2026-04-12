@@ -201,6 +201,48 @@ button:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
 .feed-right-panel { display: block; }
 @media (max-width: 900px) { .feed-right-panel { display: none; } }
 
+/* ══ Mobile / Responsive ════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Tighten page padding on mobile */
+  .page-pad { padding: 16px 14px !important; }
+
+  /* Full-width containers */
+  .mobile-full { max-width: 100% !important; width: 100% !important; }
+
+  /* Modals / overlays — full-width on mobile */
+  [style*="maxWidth: 540"], [style*="maxWidth: 480"], [style*="maxWidth: 420"] {
+    width: calc(100vw - 28px) !important;
+  }
+
+  /* Smaller hero text on mobile */
+  .hero-title { font-size: clamp(36px, 10vw, 64px) !important; }
+}
+
+/* ── BubbleMenu light mode ── */
+[data-theme="light"] .bubble-toggle {
+  background: rgba(109,40,217,0.10);
+  border-color: rgba(109,40,217,0.25);
+}
+[data-theme="light"] .bubble-toggle:hover {
+  background: rgba(109,40,217,0.18);
+}
+[data-theme="light"] .bline {
+  background: rgba(14,10,36,0.75);
+}
+[data-theme="light"] .bubble-overlay {
+  background: rgba(240,238,255,0.3);
+}
+[data-theme="light"] .bubble-pill {
+  background: rgba(255,255,255,0.85);
+  border-color: rgba(109,40,217,0.20);
+  color: rgba(14,10,36,0.88);
+}
+[data-theme="light"] .bubble-pill:hover {
+  background: var(--pill-color, #a78bfa);
+  color: #fff;
+  border-color: transparent;
+}
+
 /* ══ Light Mode ══════════════════════════════════════════════════════════ */
 [data-theme="light"] {
   --bg:            #f0eeff;

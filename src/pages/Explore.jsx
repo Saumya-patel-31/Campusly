@@ -4,6 +4,7 @@ import Layout from '../components/Layout.jsx'
 import { AvatarImg } from '../components/Layout.jsx'
 import { useAuth } from '../context/useAuth.js'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 
 const cardStyle = {
   background: 'rgba(255,255,255,0.055)',
@@ -17,6 +18,7 @@ const cardStyle = {
 export default function Explore() {
   const { profile } = useAuth()
   const navigate    = useNavigate()
+  const isMobile    = useIsMobile()
   const [people, setPeople]   = useState([])
   const [groups, setGroups]   = useState([])
   const [search, setSearch]   = useState('')
@@ -201,7 +203,7 @@ export default function Explore() {
         )}
 
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill,minmax(280px,1fr))', gap: 12 }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} style={{ ...cardStyle, padding: 18, display: 'flex', gap: 10 }}>
                 <div className="skeleton" style={{ width: 48, height: 48, borderRadius: '50%', flexShrink: 0 }} />
@@ -221,7 +223,7 @@ export default function Explore() {
             </div>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill,minmax(280px,1fr))', gap: 12 }}>
             {filtered.map((person, i) => (
               <div
                 key={person.id}

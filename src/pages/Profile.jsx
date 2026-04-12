@@ -6,6 +6,7 @@ import { AvatarImg } from '../components/Layout.jsx'
 import { useAuth } from '../context/useAuth.js'
 import { getLikedPosts } from '../hooks/usePosts.js'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 
 const YEARS = ['Freshman','Sophomore','Junior','Senior','Grad Student','PhD','Faculty']
 
@@ -174,6 +175,7 @@ export default function Profile() {
   const { username }   = useParams()
   const { profile, updateProfile, uploadAvatar } = useAuth()
   const navigate       = useNavigate()
+  const isMobile       = useIsMobile()
   const isOwn          = !username || username === profile?.username
 
   const [viewProfile, setViewProfile]   = useState(null)
@@ -480,7 +482,7 @@ export default function Profile() {
                     <textarea rows={3} value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell your campus about yourself…" style={{ resize:'none' }} />
                   </div>
 
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
+                  <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:12, marginBottom:14 }}>
                     <div>
                       <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:6, letterSpacing:'0.04em' }}>MAJOR</div>
                       <input value={major} onChange={e => setMajor(e.target.value)} placeholder="Computer Science" />

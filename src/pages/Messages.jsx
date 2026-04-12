@@ -5,6 +5,7 @@ import { AvatarImg } from '../components/Layout.jsx'
 import { useAuth } from '../context/useAuth.js'
 import { useConversations, useMessages } from '../hooks/useMessages.js'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 
 function timeStr(ts) { return new Date(ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) }
 function dateStr(ts) {
@@ -182,13 +183,17 @@ export default function Messages() {
   }
 
   const campusColor = profile?.campus_color || '#a78bfa'
+  const isMobile = useIsMobile()
+  // On mobile: show inbox list unless a conversation is active
+  const showList = !isMobile || !activeUser
+  const showChat = !isMobile || !!activeUser
 
   return (
     <Layout>
       <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
 
         {/* ── Inbox sidebar ── */}
-        <div style={{ width:290, borderRight:'1px solid rgba(255,255,255,0.10)', display:'flex', flexDirection:'column', overflowY:'auto', background:'rgba(255,255,255,0.055)', backdropFilter:'blur(28px) saturate(150%)', WebkitBackdropFilter:'blur(28px) saturate(150%)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.07)' }}>
+        <div style={{ width: isMobile ? '100%' : 290, display: showList ? 'flex' : 'none', flexDirection:'column', overflowY:'auto', background:'rgba(255,255,255,0.055)', backdropFilter:'blur(28px) saturate(150%)', WebkitBackdropFilter:'blur(28px) saturate(150%)', borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.10)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.07)' }}>
           <div style={{ padding:'22px 20px 14px', fontFamily:'var(--font-display)', fontWeight:800, fontSize:18, letterSpacing:'-0.03em', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
             Messages
           </div>
@@ -241,10 +246,14 @@ export default function Messages() {
 
         {/* ── Chat area ── */}
         {activeUser ? (
-          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+          <div style={{ flex:1, display: showChat ? 'flex' : 'none', flexDirection:'column', overflow:'hidden', width: isMobile ? '100%' : undefined }}>
 
             {/* Header */}
             <div style={{ padding:'14px 20px', borderBottom:'1px solid rgba(255,255,255,0.10)', display:'flex', alignItems:'center', gap:12, flexShrink:0, backdropFilter:'blur(28px) saturate(150%)', WebkitBackdropFilter:'blur(28px) saturate(150%)', background:'rgba(255,255,255,0.055)', boxShadow:'0 2px 16px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.07)' }}>
+              {/* Back button on mobile */}
+              {isMobile && (
+                <button onClick={() => { setActiveUser(null); navigate('/messages') }} style={{ background:'transparent', border:'none', padding:'4px 8px 4px 0', fontSize:22, color:'var(--text-2)', cursor:'pointer', display:'flex', alignItems:'center' }}>‹</button>
+              )}
               <AvatarImg src={activeUser.avatar_url} name={activeUser.display_name} size={38} />
               <div>
                 <div style={{ fontWeight:700, fontSize:15, fontFamily:'var(--font-display)' }}>{activeUser.display_name}</div>
