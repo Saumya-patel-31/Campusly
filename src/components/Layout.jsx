@@ -186,8 +186,8 @@ export default function Layout({ children }) {
             <span style={{ display:'block', width:22, height:1.5, background:'var(--text)', borderRadius:2, transition:'all 0.25s', transform: sidebarOpen ? 'translateY(-3.25px) rotate(-45deg)' : 'none' }} />
           </button>
 
-          {/* Logo */}
-          <span onClick={()=>navigate('/')} style={{ fontFamily:"'Pacifico', cursive", fontSize:22, color:'var(--text)', cursor:'pointer' }}>Campusly</span>
+          {/* Logo — absolutely centered */}
+          <span onClick={()=>navigate('/')} style={{ fontFamily:"'Pacifico', cursive", fontSize:22, color:'var(--text)', cursor:'pointer', position:'absolute', left:'50%', transform:'translateX(-50%)' }}>Campusly</span>
 
           {/* Right actions */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
