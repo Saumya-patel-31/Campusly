@@ -203,19 +203,35 @@ button:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
 
 /* ══ Mobile / Responsive ════════════════════════════════════════════════ */
 @media (max-width: 768px) {
-  /* Tighten page padding on mobile */
-  .page-pad { padding: 16px 14px !important; }
-
-  /* Full-width containers */
-  .mobile-full { max-width: 100% !important; width: 100% !important; }
-
-  /* Modals / overlays — full-width on mobile */
-  [style*="maxWidth: 540"], [style*="maxWidth: 480"], [style*="maxWidth: 420"] {
-    width: calc(100vw - 28px) !important;
+  /* All page root containers — consistent mobile padding */
+  main > div:first-child {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
   }
 
+  /* Reduce top padding on inner pages */
+  main > div[style*="padding: 28px"],
+  main > div[style*="padding:28px"] {
+    padding-top: 18px !important;
+    padding-bottom: 18px !important;
+  }
+
+  /* Glass cards — full width, reduce border radius slightly */
+  .glass-card, .glass {
+    border-radius: 14px !important;
+  }
+
+  /* Buttons — bigger touch targets on mobile */
+  button { min-height: 40px; }
+
+  /* Inputs — prevent iOS zoom on focus (font-size must be ≥16px) */
+  input, textarea, select { font-size: 16px !important; }
+
   /* Smaller hero text on mobile */
-  .hero-title { font-size: clamp(36px, 10vw, 64px) !important; }
+  .hero-title { font-size: clamp(34px, 9vw, 56px) !important; }
+
+  /* Hide desktop-only elements */
+  .desktop-only { display: none !important; }
 }
 
 /* ── BubbleMenu light mode ── */

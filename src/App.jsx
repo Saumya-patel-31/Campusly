@@ -21,6 +21,7 @@ import Notifications  from './pages/Notifications.jsx'
 import DailyGames     from './pages/DailyGames.jsx'
 import Marketplace    from './pages/Marketplace.jsx'
 import Info           from './pages/Info.jsx'
+import PostDetail     from './pages/PostDetail.jsx'
 
 function Spinner() {
   return (
@@ -92,6 +93,7 @@ function AppRoutes() {
       <Route path="/games"            element={<DailyGames />} />
       <Route path="/marketplace"      element={<Marketplace />} />
       <Route path="/info"             element={<Info />} />
+      <Route path="/post/:id"         element={<PostDetail />} />
       <Route path="*"                  element={<Navigate to="/" replace />} />
     </Routes>
   )

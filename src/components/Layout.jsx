@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 let _sidebarScrollTop = 0
@@ -16,7 +16,11 @@ export default function Layout({ children }) {
   const { unreadCount } = useNotifications(profile?.id)
   const { isDark, toggle: toggleTheme } = useTheme()
   const isMobile = useIsMobile()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const sidebarRef = useRef(null)
+
+  // Close sidebar when navigating on mobile
+  useEffect(() => { if (isMobile) setSidebarOpen(false) }, [location.pathname])
 
   // Restore sidebar scroll position on mount, preserve it on scroll
   useEffect(() => {
@@ -83,129 +87,169 @@ export default function Layout({ children }) {
 
   const campusColor = profile?.campus_color || '#a78bfa'
 
+  const sidebarBg    = isDark ? 'rgba(7,7,16,0.95)'        : 'rgba(240,238,255,0.97)'
+  const sidebarBdr   = isDark ? 'rgba(255,255,255,0.08)'   : 'rgba(14,10,36,0.09)'
+  const sidebarShdw  = isDark ? 'inset -1px 0 0 rgba(255,255,255,0.06)' : 'inset -1px 0 0 rgba(14,10,36,0.06)'
+
+  /* Shared sidebar content so we don't duplicate JSX */
+  const SidebarContent = (
+    <>
+      {/* Logo row */}
+      <div style={{ padding:'0 10px 24px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <span onClick={()=>navigate('/')} style={{ fontFamily:"'Pacifico', cursive", fontSize:26, color:'var(--text)', letterSpacing:'0.01em', cursor:'pointer' }}>
+          Campusly
+        </span>
+        {isMobile && (
+          <button onClick={()=>setSidebarOpen(false)} style={{ background:'transparent', border:'none', fontSize:22, color:'var(--text-2)', cursor:'pointer', padding:'4px 8px', lineHeight:1 }}>✕</button>
+        )}
+      </div>
+
+      {/* Campus badge */}
+      {profile && (
+        <div style={{ background:`${campusColor}12`, border:`1px solid ${campusColor}28`, borderRadius:'var(--radius-md)', padding:'10px 12px', marginBottom:20, display:'flex', alignItems:'center', gap:9 }}>
+          <span style={{ fontSize:20 }}>{profile.campus_emoji||'🎓'}</span>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontWeight:700, fontSize:13, fontFamily:'var(--font-display)', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', color:campusColor }}>{profile.campus_short}</div>
+            <div style={{ fontSize:9, color:'var(--text-3)', letterSpacing:'0.04em' }}>{profile.domain}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Nav */}
+      <nav style={{ flex:1, display:'flex', flexDirection:'column', gap:3 }}>
+        {nav.map(({ path, label, icon, badge }) => {
+          const active = path==='/' ? location.pathname==='/' : location.pathname.startsWith(path)
+          return (
+            <button key={path} onClick={()=>navigate(path)} style={{
+              display:'flex', alignItems:'center', gap:10,
+              padding:'11px 12px', borderRadius:'var(--radius-md)',
+              border: active ? `1px solid ${campusColor}28` : '1px solid transparent',
+              textAlign:'left',
+              background: active ? `${campusColor}10` : 'transparent',
+              color: active ? campusColor : 'var(--text-2)',
+              fontFamily:'var(--font-ui)', fontWeight: active ? 700 : 400, fontSize:14,
+              letterSpacing:'0.03em', position:'relative', transition:'all 0.18s',
+            }}>
+              {active && <span style={{ position:'absolute', left:0, top:'18%', bottom:'18%', width:2.5, background:campusColor, borderRadius:'0 3px 3px 0', boxShadow:`0 0 8px ${campusColor}` }} />}
+              {icon}
+              <span style={{ flex:1 }}>{label}</span>
+              {badge > 0 && (
+                <span style={{ minWidth:18, height:18, borderRadius:999, padding:'0 5px', background:'#f59e0b', color:'#000', fontSize:10, fontWeight:800, lineHeight:'18px', textAlign:'center', display:'inline-block' }}>{badge > 99 ? '99+' : badge}</span>
+              )}
+            </button>
+          )
+        })}
+      </nav>
+
+      {/* User footer */}
+      <div style={{ borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(14,10,36,0.07)', paddingTop:12, marginTop:8 }}>
+        <div onClick={()=>navigate('/profile')} style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 10px', cursor:'pointer', borderRadius:'var(--radius-md)', transition:'background 0.15s' }}
+          onMouseEnter={e=>e.currentTarget.style.background= isDark ? 'rgba(255,255,255,0.06)' : 'rgba(14,10,36,0.05)'}
+          onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+          <AvatarImg src={profile?.avatar_url} name={profile?.display_name} size={32} />
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:12, fontWeight:700, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontFamily:'var(--font-display)' }}>{profile?.display_name}</div>
+            <div style={{ fontSize:10, color:'var(--text-3)' }}>@{profile?.username}</div>
+          </div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
+          <button onClick={logout} className="btn-ghost" style={{ flex:1, fontSize:11, color:'var(--text-3)', textAlign:'left', padding:'5px 10px' }}>Sign out</button>
+          <button onClick={toggleTheme} title={isDark ? 'Light mode' : 'Dark mode'} style={{ width:34, height:34, borderRadius:999, padding:0, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(109,40,217,0.08)', border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(109,40,217,0.25)', fontSize:16, lineHeight:1, transition:'all 0.2s' }}>
+            {isDark ? '☀️' : '🌙'}
+          </button>
+        </div>
+      </div>
+    </>
+  )
+
   return (
     <div style={{ display:'flex', minHeight:'100vh', width:'100%', position:'relative' }}>
 
-      {/* ── Animated background ── */}
       <BackgroundPaths />
 
-      {/* ── Sidebar — hidden on mobile (BubbleMenu handles nav) ── */}
+      {/* ── Mobile topbar ── */}
+      {isMobile && (
+        <div style={{
+          position:'fixed', top:0, left:0, right:0, height:54, zIndex:300,
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'0 14px',
+          background: isDark ? 'rgba(7,7,16,0.88)' : 'rgba(240,238,255,0.92)',
+          backdropFilter:'blur(24px) saturate(180%)',
+          WebkitBackdropFilter:'blur(24px) saturate(180%)',
+          borderBottom:`1px solid ${sidebarBdr}`,
+          boxShadow:'0 2px 12px rgba(0,0,0,0.15)',
+        }}>
+          {/* Hamburger */}
+          <button onClick={()=>setSidebarOpen(v=>!v)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:'6px 8px 6px 0', display:'flex', flexDirection:'column', gap:5, alignItems:'flex-start' }}>
+            <span style={{ display:'block', width:22, height:1.5, background:'var(--text)', borderRadius:2, transition:'all 0.25s', transform: sidebarOpen ? 'translateY(3.25px) rotate(45deg)' : 'none' }} />
+            <span style={{ display:'block', width:14, height:1.5, background:'var(--text)', borderRadius:2, opacity: sidebarOpen ? 0 : 1, transition:'all 0.2s' }} />
+            <span style={{ display:'block', width:22, height:1.5, background:'var(--text)', borderRadius:2, transition:'all 0.25s', transform: sidebarOpen ? 'translateY(-3.25px) rotate(-45deg)' : 'none' }} />
+          </button>
+
+          {/* Logo */}
+          <span onClick={()=>navigate('/')} style={{ fontFamily:"'Pacifico', cursive", fontSize:22, color:'var(--text)', cursor:'pointer' }}>Campusly</span>
+
+          {/* Right actions */}
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <button onClick={()=>navigate('/notifications')} style={{ background:'transparent', border:'none', cursor:'pointer', padding:6, position:'relative', color:'var(--text-2)', display:'flex', alignItems:'center' }}>
+              <BellIco />
+              {unreadCount > 0 && <span style={{ position:'absolute', top:2, right:2, width:8, height:8, borderRadius:'50%', background:'#f59e0b' }} />}
+            </button>
+            <div onClick={()=>navigate('/profile')} style={{ cursor:'pointer' }}>
+              <AvatarImg src={profile?.avatar_url} name={profile?.display_name} size={30} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Backdrop for mobile drawer ── */}
+      {isMobile && sidebarOpen && (
+        <div onClick={()=>setSidebarOpen(false)} style={{ position:'fixed', inset:0, zIndex:290, background:'rgba(0,0,0,0.45)', backdropFilter:'blur(3px)', WebkitBackdropFilter:'blur(3px)' }} />
+      )}
+
+      {/* ── Sidebar ── desktop: sticky | mobile: slide-in drawer ── */}
       <aside
         ref={sidebarRef}
         onScroll={e => { _sidebarScrollTop = e.currentTarget.scrollTop }}
         style={{
-        display: isMobile ? 'none' : 'flex',
-        width:'var(--sidebar-w)', flexShrink:0,
-        borderRight: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(14,10,36,0.09)',
-        flexDirection:'column',
-        padding:'22px 12px',
-        position:'sticky', top:0, height:'100vh',
-        overflowY:'auto',
-        background: isDark ? 'rgba(7,7,16,0.45)' : 'rgba(240,238,255,0.80)',
-        backdropFilter:'blur(40px) saturate(180%)',
-        WebkitBackdropFilter:'blur(40px) saturate(180%)',
-        zIndex:100,
-        boxShadow: isDark ? 'inset -1px 0 0 rgba(255,255,255,0.06)' : 'inset -1px 0 0 rgba(14,10,36,0.06)',
-        transition: 'background 0.35s ease, border-color 0.35s ease',
-      }}>
-        {/* Logo */}
-        <div style={{ padding:'0 10px 28px', cursor:'pointer', textAlign:'center' }} onClick={()=>navigate('/')}>
-          <span style={{ fontFamily: "'Pacifico', cursive", fontSize: 32, color: 'var(--text)', letterSpacing: '0.01em' }}>
-            Campusly
-          </span>
-        </div>
-
-        {/* Campus badge */}
-        {profile && (
-          <div style={{
-            background:`${campusColor}12`,
-            border:`1px solid ${campusColor}28`,
-            borderRadius:'var(--radius-md)', padding:'10px 12px', marginBottom:22,
-            display:'flex', alignItems:'center', gap:9,
-            backdropFilter:'blur(12px)',
-          }}>
-            <span style={{ fontSize:22 }}>{profile.campus_emoji||'🎓'}</span>
-            <div style={{ minWidth:0 }}>
-              <div style={{ fontWeight:700, fontSize:13, fontFamily:'var(--font-display)', overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', color:campusColor }}>{profile.campus_short}</div>
-              <div style={{ fontSize:9, color:'var(--text-3)', letterSpacing:'0.04em' }}>{profile.domain}</div>
-            </div>
-          </div>
-        )}
-
-        {/* Nav */}
-        <nav style={{ flex:1, display:'flex', flexDirection:'column', gap:3 }}>
-          {nav.map(({ path, label, icon, badge }) => {
-            const active = path==='/' ? location.pathname==='/' : location.pathname.startsWith(path)
-            return (
-              <button key={path} onClick={()=>navigate(path)} style={{
-                display:'flex', alignItems:'center', gap:10,
-                padding:'10px 12px', borderRadius:'var(--radius-md)',
-                border: active ? `1px solid ${campusColor}28` : '1px solid transparent',
-                textAlign:'left',
-                background: active ? `${campusColor}10` : 'transparent',
-                color: active ? campusColor : 'var(--text-2)',
-                fontFamily: 'var(--font-ui)',
-                fontWeight: active ? 700 : 400, fontSize:14,
-                letterSpacing: '0.03em',
-                position:'relative', transition:'all 0.18s',
-                backdropFilter: active ? 'blur(12px)' : 'none',
-              }}>
-                {active && <span style={{ position:'absolute', left:0, top:'18%', bottom:'18%', width:2.5, background:campusColor, borderRadius:'0 3px 3px 0', boxShadow:`0 0 8px ${campusColor}` }} />}
-                {icon}
-                <span style={{ flex:1 }}>{label}</span>
-                {badge > 0 && (
-                  <span style={{
-                    minWidth:18, height:18, borderRadius:999, padding:'0 5px',
-                    background:'#f59e0b', color:'#000',
-                    fontSize:10, fontWeight:800, lineHeight:'18px',
-                    textAlign:'center', display:'inline-block',
-                  }}>{badge > 99 ? '99+' : badge}</span>
-                )}
-              </button>
-            )
-          })}
-        </nav>
-
-        {/* User footer */}
-        <div style={{ borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(14,10,36,0.07)', paddingTop:12, marginTop:8 }}>
-          <div onClick={()=>navigate('/profile')} style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 10px', cursor:'pointer', borderRadius:'var(--radius-md)', transition:'background 0.15s' }}
-            onMouseEnter={e=>e.currentTarget.style.background= isDark ? 'rgba(255,255,255,0.06)' : 'rgba(14,10,36,0.05)'}
-            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-            <AvatarImg src={profile?.avatar_url} name={profile?.display_name} size={32} />
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:12, fontWeight:700, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis', fontFamily:'var(--font-display)' }}>{profile?.display_name}</div>
-              <div style={{ fontSize:10, color:'var(--text-3)' }}>@{profile?.username}</div>
-            </div>
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4 }}>
-            <button onClick={logout} className="btn-ghost" style={{ flex:1, fontSize:11, color:'var(--text-3)', textAlign:'left', padding:'5px 10px' }}>Sign out</button>
-            {/* Theme toggle */}
-            <button
-              onClick={toggleTheme}
-              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              style={{
-                width:34, height:34, borderRadius:999, padding:0,
-                display:'flex', alignItems:'center', justifyContent:'center',
-                flexShrink:0,
-                background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(109,40,217,0.08)',
-                border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(109,40,217,0.25)',
-                fontSize:16, lineHeight:1,
-                transition:'background 0.2s, border-color 0.2s, transform 0.3s cubic-bezier(0.34,1.56,0.64,1)',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform='scale(1.12) rotate(15deg)' }}
-              onMouseLeave={e => { e.currentTarget.style.transform='scale(1) rotate(0deg)' }}
-            >
-              {isDark ? '☀️' : '🌙'}
-            </button>
-          </div>
-        </div>
+          /* Desktop */
+          ...(!isMobile ? {
+            position:'sticky', top:0, height:'100vh',
+            width:'var(--sidebar-w)', flexShrink:0,
+            display:'flex', flexDirection:'column',
+            padding:'22px 12px',
+            overflowY:'auto',
+            zIndex:100,
+          } : {
+          /* Mobile drawer */
+            position:'fixed', top:0, left:0, height:'100vh',
+            width:280, display:'flex', flexDirection:'column',
+            padding:'16px 12px',
+            overflowY:'auto',
+            zIndex:310,
+            transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition:'transform 0.3s cubic-bezier(0.16,1,0.3,1)',
+          }),
+          background: sidebarBg,
+          backdropFilter:'blur(40px) saturate(180%)',
+          WebkitBackdropFilter:'blur(40px) saturate(180%)',
+          borderRight:`1px solid ${sidebarBdr}`,
+          boxShadow: isMobile ? '4px 0 32px rgba(0,0,0,0.3)' : sidebarShdw,
+        }}>
+        {SidebarContent}
       </aside>
 
       {/* ── Main ── */}
-      <main style={{ flex:1, minWidth:0, overflowY:'auto', overflowX:'hidden', position:'relative', zIndex:10, background:'transparent', paddingBottom: isMobile ? 90 : 0 }}>
+      <main style={{
+        flex:1, minWidth:0,
+        overflowY:'auto', overflowX:'hidden',
+        position:'relative', zIndex:10,
+        background:'transparent',
+        paddingTop: isMobile ? 54 : 0,
+        paddingBottom: isMobile ? 80 : 0,
+      }}>
         {children}
       </main>
-
 
       <BubbleMenu items={bubbleItems} onNavigate={handleBubbleNav} />
     </div>

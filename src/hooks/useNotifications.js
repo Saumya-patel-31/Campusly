@@ -22,7 +22,8 @@ export function useNotifications(userId) {
         *,
         actor:actor_id ( id, username, display_name, avatar_url ),
         thread:thread_id ( id, title ),
-        spot:spot_id ( id, location, description )
+        spot:spot_id ( id, location, description ),
+        post:post_id ( id, caption, user_id, profiles:user_id ( username ) )
       `)
       .eq('recipient_id', userId)
       .order('created_at', { ascending: false })

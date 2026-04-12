@@ -16,6 +16,7 @@ function NotifIcon({ type }) {
   if (type === 'thread_reply') return <span style={{ fontSize: 16 }}>💬</span>
   if (type === 'spot_join')    return <span style={{ fontSize: 16 }}>📍</span>
   if (type === 'message')      return <span style={{ fontSize: 16 }}>✉️</span>
+  if (type === 'mention')      return <span style={{ fontSize: 16 }}>@</span>
   return <span style={{ fontSize: 16 }}>🔔</span>
 }
 
@@ -32,6 +33,10 @@ function notifText(n) {
   if (n.type === 'message') {
     return <><strong>{name}</strong> sent you a message</>
   }
+  if (n.type === 'mention') {
+    const snippet = n.post?.caption ? ` — "${n.post.caption.slice(0, 60)}${n.post.caption.length > 60 ? '…' : ''}"` : ''
+    return <><strong>{name}</strong> mentioned you in a post<em style={{ color: 'var(--text-3)', fontSize: 12 }}>{snippet}</em></>
+  }
   return <><strong>{name}</strong> interacted with you</>
 }
 
@@ -39,6 +44,7 @@ function notifLink(n) {
   if (n.type === 'thread_reply' && n.thread_id) return `/threads/${n.thread_id}`
   if (n.type === 'spot_join')                   return `/spots`
   if (n.type === 'message' && n.actor?.id)      return `/messages/${n.actor.id}`
+  if (n.type === 'mention' && n.post_id)        return `/post/${n.post_id}`
   return null
 }
 

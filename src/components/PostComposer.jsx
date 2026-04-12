@@ -82,8 +82,31 @@ export default function PostComposer({ onPosted }) {
     setBusy(true); setError(null); setProgress(0)
     const prog = setInterval(() => setProgress(p => Math.min(p+7, 88)), 200)
     try {
-      await createPost({ userId: profile.id, domain: profile.domain, caption: caption.trim(), mediaFile })
+      const post = await createPost({ userId: profile.id, domain: profile.domain, caption: caption.trim(), mediaFile })
       clearInterval(prog); setProgress(100)
+
+      // Fire mention notifications
+      const handles = [...new Set((caption.match(/@(\w+)/g) || []).map(h => h.slice(1).toLowerCase()))]
+      if (handles.length > 0 && post?.id) {
+        const { data: mentioned } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .in('username', handles)
+          .eq('domain', profile.domain)
+        if (mentioned?.length) {
+          const notifs = mentioned
+            .filter(u => u.id !== profile.id)   // don't self-notify
+            .map(u => ({
+              recipient_id: u.id,
+              actor_id:     profile.id,
+              type:         'mention',
+              post_id:      post.id,
+              read:         false,
+            }))
+          if (notifs.length) await supabase.from('notifications').insert(notifs)
+        }
+      }
+
       setTimeout(() => { setCaption(''); removeMedia(); setExpanded(false); setBusy(false); setProgress(0); onPosted?.() }, 300)
     } catch(err) {
       clearInterval(prog); setError(err.message); setBusy(false); setProgress(0)
