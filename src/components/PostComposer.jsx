@@ -85,29 +85,29 @@ export default function PostComposer({ onPosted }) {
       const post = await createPost({ userId: profile.id, domain: profile.domain, caption: caption.trim(), mediaFile })
       clearInterval(prog); setProgress(100)
 
-      // Fire mention notifications
+      setTimeout(() => { setCaption(''); removeMedia(); setExpanded(false); setBusy(false); setProgress(0); onPosted?.() }, 300)
+
+      // Fire mention notifications (isolated — post success is not affected by errors here)
       const handles = [...new Set((caption.match(/@(\w+)/g) || []).map(h => h.slice(1)))]
       if (handles.length > 0 && post?.id) {
-        const { data: mentioned } = await supabase
-          .from('profiles')
-          .select('id, username')
-          .or(handles.map(h => `username.ilike.${h}`).join(','))
-          .eq('domain', profile.domain)
-        if (mentioned?.length) {
-          const notifs = mentioned
-            .filter(u => u.id !== profile.id)   // don't self-notify
-            .map(u => ({
-              recipient_id: u.id,
-              actor_id:     profile.id,
-              type:         'mention',
-              post_id:      post.id,
-              read:         false,
-            }))
-          if (notifs.length) await supabase.from('notifications').insert(notifs)
+        try {
+          const { data: mentioned, error: lookupErr } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .in('username', handles)
+            .eq('domain', profile.domain)
+          if (lookupErr) throw lookupErr
+          const notifs = (mentioned || [])
+            .filter(u => u.id !== profile.id)
+            .map(u => ({ recipient_id: u.id, actor_id: profile.id, type: 'mention', post_id: post.id, read: false }))
+          if (notifs.length) {
+            const { error: insertErr } = await supabase.from('notifications').insert(notifs)
+            if (insertErr) throw insertErr
+          }
+        } catch (notifErr) {
+          console.error('Mention notification failed:', notifErr)
         }
       }
-
-      setTimeout(() => { setCaption(''); removeMedia(); setExpanded(false); setBusy(false); setProgress(0); onPosted?.() }, 300)
     } catch(err) {
       clearInterval(prog); setError(err.message); setBusy(false); setProgress(0)
     }

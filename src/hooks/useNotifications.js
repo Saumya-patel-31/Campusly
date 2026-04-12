@@ -16,20 +16,20 @@ export function useNotifications(userId) {
 
   const load = useCallback(async () => {
     if (!userId) return
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('notifications')
       .select(`
         *,
         actor:actor_id ( id, username, display_name, avatar_url ),
         thread:thread_id ( id, title ),
-        spot:spot_id ( id, location, description ),
-        post:post_id ( id, caption, user_id, profiles:user_id ( username ) )
+        spot:spot_id ( id, location, description )
       `)
       .eq('recipient_id', userId)
       .order('created_at', { ascending: false })
       .limit(50)
 
-    setNotifications(data || [])
+    if (error) console.error('useNotifications load error:', error)
+    setNotifications((data || []).filter(n => n.type !== 'message'))
     setLoading(false)
   }, [userId])
 

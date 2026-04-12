@@ -128,8 +128,14 @@ export default function GroupDetail() {
   async function handleJoinToggle() {
     if (isMember) {
       await supabase.from('group_members').delete().eq('group_id', id).eq('user_id', profile.id)
+      const remaining = members.filter(m => m.user_id !== profile.id)
+      if (remaining.length === 0) {
+        await supabase.from('groups').delete().eq('id', id)
+        navigate('/groups')
+        return
+      }
       setIsMember(false)
-      setMembers(prev => prev.filter(m => m.user_id !== profile.id))
+      setMembers(remaining)
     } else {
       await supabase.from('group_members').insert({ group_id: id, user_id: profile.id })
       setIsMember(true)

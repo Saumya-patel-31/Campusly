@@ -34,8 +34,7 @@ function notifText(n) {
     return <><strong>{name}</strong> sent you a message</>
   }
   if (n.type === 'mention') {
-    const snippet = n.post?.caption ? ` — "${n.post.caption.slice(0, 60)}${n.post.caption.length > 60 ? '…' : ''}"` : ''
-    return <><strong>{name}</strong> mentioned you in a post<em style={{ color: 'var(--text-3)', fontSize: 12 }}>{snippet}</em></>
+    return <><strong>{name}</strong> mentioned you in a post</>
   }
   return <><strong>{name}</strong> interacted with you</>
 }

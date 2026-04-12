@@ -182,13 +182,6 @@ export function useMessages(userId, otherId) {
     const { data, error } = await supabase.from('messages').insert(row).select().single()
     if (error || !data) return
 
-    // Create a notification for the receiver
-    await supabase.from('notifications').insert({
-      recipient_id: otherId,
-      actor_id:     userId,
-      type:         'message',
-    })
-
     // Notify both parties via WebSocket
     wsClient.send({
       type:       'dm_event',
