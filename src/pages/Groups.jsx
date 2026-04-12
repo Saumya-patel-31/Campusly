@@ -209,7 +209,7 @@ function GroupCard({ group, isMember, onJoin, campusColor }) {
         )}
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
           <span style={{ fontSize:11, color:'var(--text-2)' }}>
-            👤 {group.members_count ?? 1} {group.members_count === 1 ? 'member' : 'members'}
+            👤 {group.real_members ?? 0} {group.real_members === 1 ? 'member' : 'members'}
           </span>
           <span style={{ fontSize:11, color:'var(--text-2)' }}>
             📝 {group.posts_count ?? 0} posts
@@ -249,10 +249,18 @@ export default function Groups() {
     setLoading(true)
     const { data } = await supabase
       .from('groups')
-      .select('*')
+      .select('*, group_members(count)')
       .eq('domain', profile.domain)
-      .order('members_count', { ascending: false })
-    setGroups(data || [])
+
+    if (data) {
+      // Attach real member count and auto-delete groups with 0 members
+      const withCounts = data.map(g => ({ ...g, real_members: g.group_members?.[0]?.count ?? 0 }))
+      const empty = withCounts.filter(g => g.real_members === 0)
+      if (empty.length > 0) {
+        await supabase.from('groups').delete().in('id', empty.map(g => g.id))
+      }
+      setGroups(withCounts.filter(g => g.real_members > 0).sort((a, b) => b.real_members - a.real_members))
+    }
     setLoading(false)
   }
 
@@ -268,14 +276,19 @@ export default function Groups() {
     const isMember = memberships.has(groupId)
     if (isMember) {
       await supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', profile.id)
-      await supabase.rpc('decrement_group_members', { gid: groupId })
       setMembers(s => { const n = new Set(s); n.delete(groupId); return n })
-      setGroups(prev => prev.map(g => g.id === groupId ? { ...g, members_count: Math.max(0, (g.members_count || 1) - 1) } : g))
+      const updated = groups.map(g => g.id === groupId ? { ...g, real_members: Math.max(0, (g.real_members || 1) - 1) } : g)
+      const remaining = updated.find(g => g.id === groupId)?.real_members ?? 0
+      if (remaining === 0) {
+        await supabase.from('groups').delete().eq('id', groupId)
+        setGroups(prev => prev.filter(g => g.id !== groupId))
+      } else {
+        setGroups(updated)
+      }
     } else {
       await supabase.from('group_members').insert({ group_id: groupId, user_id: profile.id })
-      await supabase.rpc('increment_group_members', { gid: groupId })
       setMembers(s => new Set(s).add(groupId))
-      setGroups(prev => prev.map(g => g.id === groupId ? { ...g, members_count: (g.members_count || 0) + 1 } : g))
+      setGroups(prev => prev.map(g => g.id === groupId ? { ...g, real_members: (g.real_members || 0) + 1 } : g))
     }
   }
 
