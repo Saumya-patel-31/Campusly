@@ -51,7 +51,7 @@ function notifLink(n) {
 export default function Notifications() {
   const { profile } = useAuth()
   const navigate = useNavigate()
-  const { notifications, unreadCount, markRead, markAllRead, loading } =
+  const { notifications, unreadCount, markRead, markAllRead, deleteAll, loading } =
     useNotifications(profile?.id)
 
   const campusColor = profile?.campus_color || '#a78bfa'
@@ -76,18 +76,32 @@ export default function Notifications() {
               {unreadCount > 0 ? `${unreadCount} unread` : 'You\'re all caught up'}
             </p>
           </div>
-          {unreadCount > 0 && (
-            <button
-              onClick={markAllRead}
-              style={{
-                fontSize: 12, padding: '6px 14px', borderRadius: 99,
-                background: `${campusColor}18`, border: `1px solid ${campusColor}40`,
-                color: campusColor, fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              Mark all read
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllRead}
+                style={{
+                  fontSize: 12, padding: '6px 14px', borderRadius: 99,
+                  background: `${campusColor}18`, border: `1px solid ${campusColor}40`,
+                  color: campusColor, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Mark all read
+              </button>
+            )}
+            {notifications.length > 0 && (
+              <button
+                onClick={() => { if (window.confirm('Delete all notifications?')) deleteAll() }}
+                style={{
+                  fontSize: 12, padding: '6px 14px', borderRadius: 99,
+                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                  color: '#ef4444', fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Delete all
+              </button>
+            )}
+          </div>
         </div>
 
         {/* List */}

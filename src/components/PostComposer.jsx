@@ -86,12 +86,12 @@ export default function PostComposer({ onPosted }) {
       clearInterval(prog); setProgress(100)
 
       // Fire mention notifications
-      const handles = [...new Set((caption.match(/@(\w+)/g) || []).map(h => h.slice(1).toLowerCase()))]
+      const handles = [...new Set((caption.match(/@(\w+)/g) || []).map(h => h.slice(1)))]
       if (handles.length > 0 && post?.id) {
         const { data: mentioned } = await supabase
           .from('profiles')
           .select('id, username')
-          .in('username', handles)
+          .or(handles.map(h => `username.ilike.${h}`).join(','))
           .eq('domain', profile.domain)
         if (mentioned?.length) {
           const notifs = mentioned

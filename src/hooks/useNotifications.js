@@ -85,5 +85,10 @@ export function useNotifications(userId) {
 
   const unreadCount = notifications.filter(n => !n.read).length
 
-  return { notifications, unreadCount, markRead, markAllRead, loading }
+  const deleteAll = useCallback(async () => {
+    setNotifications([])
+    await supabase.from('notifications').delete().eq('recipient_id', userId)
+  }, [userId])
+
+  return { notifications, unreadCount, markRead, markAllRead, deleteAll, loading }
 }
