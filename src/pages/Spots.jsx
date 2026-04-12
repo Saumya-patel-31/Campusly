@@ -278,7 +278,7 @@ function DateTimePicker({ value, onChange, min, campusColor }) {
             <div style={{ display:'flex', flexDirection:'column', gap:5, marginLeft:6 }}>
               {['AM','PM'].map(ap => (
                 <button key={ap} type="button" onClick={() => ampm !== ap && toggleAmPm()} style={{
-                  padding:'8px 14px', borderRadius:9, border:'none', cursor:'pointer',
+                  padding:'8px 14px', borderRadius:9, cursor:'pointer',
                   fontSize:12, fontWeight:700, letterSpacing:'0.04em',
                   background: ampm === ap ? `${campusColor}25` : 'rgba(255,255,255,0.05)',
                   border: `1.5px solid ${ampm === ap ? campusColor + '55' : 'rgba(255,255,255,0.09)'}`,
