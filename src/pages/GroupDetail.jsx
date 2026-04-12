@@ -229,8 +229,8 @@ export default function GroupDetail() {
                 <p style={{ fontSize:13, color:'var(--text-2)', lineHeight:1.6, marginBottom:10 }}>{group.description}</p>
               )}
               <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
-                <span style={{ fontSize:12, color:'var(--text-2)' }}>👤 {group.members_count ?? members.length} members</span>
-                <span style={{ fontSize:12, color:'var(--text-2)' }}>📝 {group.posts_count ?? posts.length} posts</span>
+                <span style={{ fontSize:12, color:'var(--text-2)' }}>👤 {members.length} members</span>
+                <span style={{ fontSize:12, color:'var(--text-2)' }}>📝 {posts.length} posts</span>
                 {(group.tags || []).map(t => (
                   <span key={t} style={{ fontSize:10, color:campusColor, background:`${campusColor}14`, border:`1px solid ${campusColor}30`, borderRadius:999, padding:'2px 8px', fontWeight:600 }}>
                     #{t}
