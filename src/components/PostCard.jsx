@@ -112,7 +112,7 @@ export default function PostCard({ post, likedSet=new Set(), onLikeChange }) {
 
   const author      = post.profiles
   const isOwn       = post.user_id === profile?.id
-  const campusColor = profile?.campus_color || '#a78bfa'
+  const campusColor = author?.campus_color || profile?.campus_color || '#a78bfa'
 
   useEffect(() => { setLiked(likedSet.has(post.id)) }, [likedSet, post.id])
 
@@ -182,7 +182,7 @@ export default function PostCard({ post, likedSet=new Set(), onLikeChange }) {
                 {author?.display_name}
               </span>
               {(author?.major || author?.year) && (
-                <span style={{ fontSize:10, color:'var(--text-3)', background:'rgba(255,255,255,0.06)', padding:'1px 7px', borderRadius:20, border:'1px solid rgba(255,255,255,0.09)' }}>
+                <span style={{ fontSize:10, color:campusColor, background:`${campusColor}18`, padding:'1px 7px', borderRadius:20, border:`1px solid ${campusColor}40` }}>
                   {author?.major}{author?.year ? ` · ${author.year}` : ''}
                 </span>
               )}

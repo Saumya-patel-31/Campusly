@@ -53,6 +53,11 @@
   flex-direction: column;
   gap: 10px;
   align-items: flex-end;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
 }
 
 .bubble-item {

@@ -14,7 +14,7 @@ export function useFeed(domain) {
       .from('posts')
       .select(`
         *,
-        profiles ( id, username, display_name, avatar_url, major, year, campus_short )
+        profiles ( id, username, display_name, avatar_url, major, year, campus_short, campus_color )
       `)
       .eq('domain', domain)
       .order('created_at', { ascending: false })
@@ -38,7 +38,7 @@ export function useFeed(domain) {
         // Fetch the full post with profile join
         supabase
           .from('posts')
-          .select('*, profiles ( id, username, display_name, avatar_url, major, year, campus_short )')
+          .select('*, profiles ( id, username, display_name, avatar_url, major, year, campus_short, campus_color )')
           .eq('id', payload.new.id)
           .single()
           .then(({ data }) => {
