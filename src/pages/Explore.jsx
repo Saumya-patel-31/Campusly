@@ -38,8 +38,13 @@ export default function Explore() {
   }
 
   async function loadGroups() {
-    const { data } = await supabase.from('groups').select('*').eq('domain', profile.domain).order('members_count', { ascending: false }).limit(20)
-    setGroups(data || [])
+    const { data } = await supabase
+      .from('groups')
+      .select('*, group_members(count)')
+      .eq('domain', profile.domain)
+      .limit(20)
+    const alive = (data || []).filter(g => (g.group_members?.[0]?.count ?? 0) > 0)
+    setGroups(alive.sort((a, b) => (b.group_members?.[0]?.count ?? 0) - (a.group_members?.[0]?.count ?? 0)))
   }
 
   async function loadFollows() {

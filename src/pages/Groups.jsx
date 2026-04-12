@@ -256,8 +256,11 @@ export default function Groups() {
       // Attach real member count and auto-delete groups with 0 members
       const withCounts = data.map(g => ({ ...g, real_members: g.group_members?.[0]?.count ?? 0 }))
       const empty = withCounts.filter(g => g.real_members === 0)
-      if (empty.length > 0) {
-        await supabase.from('groups').delete().in('id', empty.map(g => g.id))
+      for (const g of empty) {
+        await supabase.from('group_post_likes').delete().eq('group_id', g.id)
+        await supabase.from('group_posts').delete().eq('group_id', g.id)
+        await supabase.from('group_members').delete().eq('group_id', g.id)
+        await supabase.from('groups').delete().eq('id', g.id)
       }
       setGroups(withCounts.filter(g => g.real_members > 0).sort((a, b) => b.real_members - a.real_members))
     }
@@ -280,6 +283,9 @@ export default function Groups() {
       const updated = groups.map(g => g.id === groupId ? { ...g, real_members: Math.max(0, (g.real_members || 1) - 1) } : g)
       const remaining = updated.find(g => g.id === groupId)?.real_members ?? 0
       if (remaining === 0) {
+        await supabase.from('group_post_likes').delete().eq('group_id', groupId)
+        await supabase.from('group_posts').delete().eq('group_id', groupId)
+        await supabase.from('group_members').delete().eq('group_id', groupId)
         await supabase.from('groups').delete().eq('id', groupId)
         setGroups(prev => prev.filter(g => g.id !== groupId))
       } else {

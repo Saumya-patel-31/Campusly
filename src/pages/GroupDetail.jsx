@@ -130,6 +130,10 @@ export default function GroupDetail() {
       await supabase.from('group_members').delete().eq('group_id', id).eq('user_id', profile.id)
       const remaining = members.filter(m => m.user_id !== profile.id)
       if (remaining.length === 0) {
+        // Delete all children first, then the group itself
+        await supabase.from('group_post_likes').delete().eq('group_id', id)
+        await supabase.from('group_posts').delete().eq('group_id', id)
+        await supabase.from('group_members').delete().eq('group_id', id)
         await supabase.from('groups').delete().eq('id', id)
         navigate('/groups')
         return
