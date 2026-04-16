@@ -193,6 +193,7 @@ export default function Messages() {
     <Layout>
       <div style={{
         display: 'flex', overflow: 'hidden',
+        background: 'var(--bg, #070710)',   // solid — blocks the diagonal stripes behind
         ...(isMobile
           ? { position:'fixed', top:54, left:0, right:0, bottom:0, zIndex:50 }
           : { height:'100vh' })
@@ -304,7 +305,7 @@ export default function Messages() {
             </div>
 
             {/* Messages */}
-            <div style={{ flex:1, overflowY:'auto', padding:'20px', display:'flex', flexDirection:'column', gap:4 }}
+            <div style={{ flex:1, overflowY:'auto', padding: isMobile ? '12px 14px' : '20px', display:'flex', flexDirection:'column', gap:4, background:'var(--bg, #070710)' }}
               onClick={() => isMobile && setTappedMsgId(null)}
             >
               {loadingMsgs ? (
@@ -417,7 +418,7 @@ export default function Messages() {
             </div>
 
             {/* Input */}
-            <form onSubmit={handleSend} style={{ padding:'14px 20px', borderTop:'1px solid rgba(255,255,255,0.10)', display:'flex', gap:10, flexShrink:0, backdropFilter:'blur(28px) saturate(150%)', WebkitBackdropFilter:'blur(28px) saturate(150%)', background:'rgba(255,255,255,0.055)', boxShadow:'0 -2px 16px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.07)' }}>
+            <form onSubmit={handleSend} style={{ padding: isMobile ? '10px 14px 10px 14px' : '14px 20px', paddingRight: isMobile ? '76px' : '20px', borderTop:'1px solid rgba(255,255,255,0.10)', display:'flex', gap:10, flexShrink:0, backdropFilter:'blur(28px) saturate(150%)', WebkitBackdropFilter:'blur(28px) saturate(150%)', background:'rgba(255,255,255,0.055)', boxShadow:'0 -2px 16px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.07)' }}>
               <textarea
                 placeholder={`Message ${activeUser.display_name.split(' ')[0]}…`}
                 value={draft}

@@ -145,36 +145,54 @@ function evaluateGuess(guess, target) {
 
 const TILE_STATUS_BG = { correct: '#22c55e', present: '#eab308', absent: '#2d3748', '': 'rgba(255,255,255,0.06)' }
 
-// Computes Wordle tile + keyboard sizes that always fit the current viewport.
-// No hardcoded breakpoints — recalculates on every resize.
+// Computes Wordle tile + keyboard sizes that GUARANTEE everything fits the viewport.
+// Key insight: Row 1 has 10 keys — the keyboard is always the real width constraint,
+// not the 5-tile board. Recalculates on every resize, no hardcoded breakpoints.
 function useWordleSizes() {
   function compute() {
     const vw = window.innerWidth
     const vh = window.innerHeight
 
-    // Width constraint: 5 tiles + 4 gaps inside ~60 px of horizontal padding
-    const tileGap    = Math.max(3, Math.round(vw * 0.011))
-    const maxByWidth = Math.floor((vw - 60 - 4 * tileGap) / 5)
+    // Outer container has 0 horizontal padding on mobile (we set padding:'12px 0').
+    // Game panel has 8px padding each side = 16px total.
+    const availWidth = vw - 16
+    const gap = Math.max(3, Math.round(vw * 0.008))  // shared tile + key gap
 
-    // Height budget:
-    //   54  topbar  |  80  bottom nav  |  56  outer padding (28 × 2)
-    //   82  game-card header           |  32  panel padding (16 × 2)
-    //   12  board→keyboard gap
+    // ── Width constraint (keyboard is wider than board) ──────────────
+    // Row 1: Q W E R T Y U I O P = 10 keys + 9 gaps
+    // keyW = floor(tileSize * 0.60)  →  10 * (tileSize * 0.60) + 9*gap ≤ availWidth
+    //                                →  tileSize ≤ (availWidth − 9*gap) / 6
+    const maxByKeyboard = Math.floor((availWidth - 9 * gap) / 6)
+
+    // Board: 5 tiles + 4 gaps (looser, but keep for safety)
+    const maxByBoard = Math.floor((availWidth - 4 * gap) / 5)
+
+    // ── Height constraint ────────────────────────────────────────────
+    // Budget: vh − topbar(54) − bottomNav(80) − outerVPad(12)
+    //             − cardHeader(74) − panelVPad(24) − boardKeyGap(8)
     // Board  : 6t + 5g
-    // Keyboard: 3 × (0.75 t) + 2g  →  together: 8.25 t + 7 g ≤ available
-    const available  = vh - 54 - 80 - 56 - 82 - 32 - 12
-    const maxByHeight = Math.floor((available - 7 * tileGap) / 8.25)
+    // Keyboard: 3*(0.74t) + 2g  →  total: 8.22t + 7g ≤ heightBudget
+    const heightBudget = vh - 54 - 80 - 12 - 74 - 24 - 8
+    const maxByHeight = Math.floor((heightBudget - 7 * gap) / 8.22)
 
-    const tileSize = Math.max(28, Math.min(54, maxByWidth, maxByHeight))
-    const keyH     = Math.max(26, Math.round(tileSize * 0.75))
-    const keyW     = Math.max(20, Math.round(tileSize * 0.60))
-    const keyWide  = Math.max(36, Math.round(tileSize * 0.92))
-    const keyGap   = tileGap
-    const keyFs    = Math.max(8,  Math.round(tileSize * 0.22))
-    const tileFs   = Math.max(12, Math.round(tileSize * 0.40))
-    const boardGap = Math.max(8,  Math.round(tileSize * 0.25))
+    const tileSize = Math.max(28, Math.min(54, maxByKeyboard, maxByBoard, maxByHeight))
 
-    return { tileSize, tileGap, keyH, keyW, keyWide, keyGap, keyFs, tileFs, boardGap }
+    // keyW: floor to guarantee 10*keyW + 9*gap ≤ availWidth
+    const keyW    = Math.max(16, Math.min(
+      Math.floor(tileSize * 0.60),
+      Math.floor((availWidth - 9 * gap) / 10)
+    ))
+    const keyH    = Math.max(26, Math.round(tileSize * 0.74))
+    // keyWide: ENTER + ⌫; row3 = 2*keyWide + 7*keyW + 8*gap ≤ availWidth
+    const keyWide = Math.max(36, Math.min(
+      Math.round(tileSize * 0.95),
+      Math.floor((availWidth - 7 * keyW - 8 * gap) / 2)
+    ))
+    const keyFs   = Math.max(8,  Math.round(tileSize * 0.22))
+    const tileFs  = Math.max(12, Math.round(tileSize * 0.40))
+    const boardGap = gap
+
+    return { tileSize, tileGap: gap, keyH, keyW, keyWide, keyGap: gap, keyFs, tileFs, boardGap }
   }
 
   const [sizes, setSizes] = useState(compute)
@@ -755,12 +773,12 @@ export default function DailyGames() {
         @keyframes pop { 0%{transform:scale(0.8);opacity:0} 100%{transform:scale(1);opacity:1} }
         .game-panel { animation: pop 0.25s ease-out; }
       `}</style>
-      <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', gap:24, maxWidth:1060, margin:'0 auto', padding:'28px 20px', alignItems:'flex-start' }}>
+      <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 12 : 24, maxWidth:1060, margin:'0 auto', padding: isMobile ? '12px 0' : '28px 20px', alignItems:'flex-start' }}>
 
         {/* ── Left: Games ── */}
         <div style={{ flex:1, minWidth:0 }}>
           {/* Header */}
-          <div className="fade-up" style={{ marginBottom:24 }}>
+          <div className="fade-up" style={{ marginBottom: isMobile ? 12 : 24, padding: isMobile ? '0 14px' : 0 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
               <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                 <span style={{ fontSize:30 }}>🎮</span>
@@ -803,7 +821,7 @@ export default function DailyGames() {
                   {/* Card header */}
                   <div
                     onClick={() => !done && setActiveGame(open ? null : game.id)}
-                    style={{ ...panel, padding:'18px 20px', cursor: done ? 'default' : 'pointer', transition:'all 0.15s' }}
+                    style={{ ...panel, padding: isMobile ? '12px 14px' : '18px 20px', cursor: done ? 'default' : 'pointer', transition:'all 0.15s' }}
                     onMouseEnter={e => { if(!done) e.currentTarget.style.borderColor='rgba(255,255,255,0.18)' }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.10)' }}
                   >
@@ -834,7 +852,7 @@ export default function DailyGames() {
 
                   {/* Inline game panel */}
                   {open && !done && (
-                    <div className="game-panel" style={{ ...panel, marginTop:6, padding:'clamp(10px, 2.5vh, 28px) clamp(8px, 2.5vw, 24px)' }}>
+                    <div className="game-panel" style={{ ...panel, marginTop:6, padding: isMobile ? '12px 8px' : '28px 24px', borderRadius: isMobile ? '0 0 16px 16px' : 16 }}>
                       {game.id === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle', won, score); setActiveGame(null) }} />}
                       {game.id === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
                       {game.id === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz', won, score); setActiveGame(null) }} />}
