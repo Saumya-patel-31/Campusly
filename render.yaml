@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: campusly-ws
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+
+    # Keep the process alive — Render free tier sleeps after 15 min of
+    # inactivity, but active WebSocket connections will keep it awake.
+    healthCheckPath: /health
+
+    envVars:
+      - key: PORT
+        value: 4000
+      - key: NODE_ENV
+        value: production
