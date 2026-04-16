@@ -195,7 +195,7 @@ export default function Messages() {
         display: 'flex', overflow: 'hidden',
         background: '#070710',
         ...(isMobile
-          ? { position:'fixed', top:54, left:0, right:0, bottom:0, zIndex:250 }
+          ? { position:'fixed', top:54, left:0, width:'100vw', bottom:0, zIndex:250 }
           : { height:'100vh' })
       }}>
 

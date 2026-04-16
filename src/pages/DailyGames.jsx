@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import Layout from '../components/Layout.jsx'
 import { useAuth } from '../context/useAuth.js'
 import { AvatarImg } from '../components/Layout.jsx'
@@ -766,6 +767,32 @@ export default function DailyGames() {
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0)
   const gamesPlayed = Object.keys(scores).length
 
+  // Mobile full-screen game overlay — portalled to document.body so it escapes
+  // the <main overflowY:auto> container that breaks position:fixed on iOS Safari.
+  const activeGameMeta = GAME_META.find(g => g.id === activeGame)
+  const mobileOverlay = isMobile && activeGameMeta && !scores[activeGameMeta.id]
+    ? createPortal(
+        <div style={{ position:'fixed', top:54, left:0, width:'100vw', bottom:0, zIndex:250, background:'#070710', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+          {/* Header */}
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderBottom:'1px solid rgba(255,255,255,0.10)', flexShrink:0, background:'rgba(255,255,255,0.04)' }}>
+            <button onClick={() => setActiveGame(null)} style={{ background:'transparent', border:'none', color:'var(--text-2)', fontSize:26, cursor:'pointer', padding:'2px 10px 2px 0', lineHeight:1 }}>‹</button>
+            <span style={{ fontSize:18 }}>{activeGameMeta.emoji}</span>
+            <div>
+              <div style={{ fontFamily:'var(--font-display)', fontWeight:700, fontSize:14 }}>{activeGameMeta.name}</div>
+              <div style={{ fontSize:11, color:'var(--text-3)' }}>{activeGameMeta.desc}</div>
+            </div>
+          </div>
+          {/* Centered game */}
+          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', padding:'8px 0' }}>
+            {activeGame === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle',  won, score); setActiveGame(null) }} />}
+            {activeGame === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
+            {activeGame === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz',    won, score); setActiveGame(null) }} />}
+          </div>
+        </div>,
+        document.body
+      )
+    : null
+
   return (
     <Layout>
       <style>{`
@@ -773,6 +800,7 @@ export default function DailyGames() {
         @keyframes pop { 0%{transform:scale(0.8);opacity:0} 100%{transform:scale(1);opacity:1} }
         .game-panel { animation: pop 0.25s ease-out; }
       `}</style>
+      {mobileOverlay}
       <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 12 : 24, maxWidth:1060, margin:'0 auto', padding: isMobile ? '12px 0' : '28px 20px', alignItems:'flex-start' }}>
 
         {/* ── Left: Games ── */}
@@ -850,40 +878,13 @@ export default function DailyGames() {
                     </div>
                   </div>
 
-                  {/* Game panel — full-screen overlay on mobile, inline on desktop */}
-                  {open && !done && (
-                    isMobile ? (
-                      <div style={{
-                        position:'fixed', top:54, left:0, right:0, bottom:0, zIndex:250,
-                        background:'#070710', display:'flex', flexDirection:'column', overflow:'hidden',
-                      }}>
-                        {/* Overlay header with back arrow */}
-                        <div style={{
-                          display:'flex', alignItems:'center', gap:10, padding:'10px 14px',
-                          borderBottom:'1px solid rgba(255,255,255,0.10)', flexShrink:0,
-                          background:'rgba(255,255,255,0.04)',
-                        }}>
-                          <button onClick={() => setActiveGame(null)} style={{ background:'transparent', border:'none', color:'var(--text-2)', fontSize:24, cursor:'pointer', padding:'2px 10px 2px 0', lineHeight:1, fontWeight:300 }}>‹</button>
-                          <span style={{ fontSize:18 }}>{game.emoji}</span>
-                          <div>
-                            <div style={{ fontFamily:'var(--font-display)', fontWeight:700, fontSize:14 }}>{game.name}</div>
-                            <div style={{ fontSize:11, color:'var(--text-3)' }}>{game.desc}</div>
-                          </div>
-                        </div>
-                        {/* Centered game content */}
-                        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', padding:'8px 0' }}>
-                          {game.id === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle',  won, score); setActiveGame(null) }} />}
-                          {game.id === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
-                          {game.id === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz',    won, score); setActiveGame(null) }} />}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="game-panel" style={{ ...panel, marginTop:6, padding:'28px 24px', borderRadius:16 }}>
-                        {game.id === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle',  won, score); setActiveGame(null) }} />}
-                        {game.id === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
-                        {game.id === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz',    won, score); setActiveGame(null) }} />}
-                      </div>
-                    )
+                  {/* Desktop inline game panel (mobile uses the portal overlay above) */}
+                  {open && !done && !isMobile && (
+                    <div className="game-panel" style={{ ...panel, marginTop:6, padding:'28px 24px', borderRadius:16 }}>
+                      {game.id === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle',  won, score); setActiveGame(null) }} />}
+                      {game.id === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
+                      {game.id === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz',    won, score); setActiveGame(null) }} />}
+                    </div>
                   )}
                 </div>
               )
