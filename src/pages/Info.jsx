@@ -917,12 +917,15 @@ export default function Info() {
   const [loading,   setLoading]   = useState(true)
   const [error,     setError]     = useState('')
   const [linksOpen, setLinksOpen] = useState(false)
+  const [retryKey,  setRetryKey]  = useState(0)
 
   useEffect(() => {
     if (!campusName) return
     const cached = readCache(domain)
     if (cached) { setWikiData(cached); setLoading(false); return }
 
+    setLoading(true)
+    setError('')
     fetchUniversityWiki(campusName)
       .then(data => {
         if (data) { writeCache(domain, data); setWikiData(data) }
@@ -930,7 +933,7 @@ export default function Info() {
       })
       .catch(() => setError('Failed to load university information.'))
       .finally(() => setLoading(false))
-  }, [campusName, domain])
+  }, [campusName, domain, retryKey])
 
   const quickLinks = wikiData
     ? buildQuickLinks(domain, campusName, wikiData.wikiUrl)
@@ -984,9 +987,16 @@ export default function Info() {
           <div style={{ ...panel, padding: '40px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>😕</div>
             <div style={{ fontWeight: 600, fontFamily: 'var(--font-display)', marginBottom: 6 }}>{error}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
-              Try refreshing the page — or check your university's official website.
+            <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>
+              This is usually a temporary network issue.
             </div>
+            <button
+              onClick={() => setRetryKey(k => k + 1)}
+              className="btn-primary"
+              style={{ fontSize: 13, padding: '9px 22px' }}
+            >
+              Try again
+            </button>
           </div>
         )}
 

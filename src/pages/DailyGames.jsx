@@ -3,6 +3,7 @@ import Layout from '../components/Layout.jsx'
 import { useAuth } from '../context/useAuth.js'
 import { AvatarImg } from '../components/Layout.jsx'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 
 // ── Utilities ───────────────────────────────────────────────────
 
@@ -667,6 +668,7 @@ async function upsertGameScore(profile, scores) {
 
 export default function DailyGames() {
   const { profile } = useAuth()
+  const isMobile = useIsMobile()
   const todayStr = getTodayStr()
   const [activeGame, setActiveGame] = useState(null)
   const [scores, setScores] = useState({})
@@ -709,7 +711,7 @@ export default function DailyGames() {
         @keyframes pop { 0%{transform:scale(0.8);opacity:0} 100%{transform:scale(1);opacity:1} }
         .game-panel { animation: pop 0.25s ease-out; }
       `}</style>
-      <div style={{ display:'flex', gap:24, maxWidth:1060, margin:'0 auto', padding:'28px 20px', alignItems:'flex-start' }}>
+      <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', gap:24, maxWidth:1060, margin:'0 auto', padding:'28px 20px', alignItems:'flex-start' }}>
 
         {/* ── Left: Games ── */}
         <div style={{ flex:1, minWidth:0 }}>
@@ -810,7 +812,7 @@ export default function DailyGames() {
         </div>
 
         {/* ── Right: Leaderboard ── */}
-        <div style={{ width:268, flexShrink:0, position:'sticky', top:28 }}>
+        <div style={{ width: isMobile ? '100%' : 268, flexShrink:0, position: isMobile ? 'static' : 'sticky', top:28 }}>
           <Leaderboard profile={profile} scores={scores} refreshKey={leaderRefresh} />
         </div>
       </div>

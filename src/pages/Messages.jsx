@@ -119,6 +119,7 @@ export default function Messages() {
   const [activeUser, setActiveUser] = useState(null)
   const [draft, setDraft]           = useState('')
   const [hoveredMsgId, setHoveredMsgId] = useState(null)
+  const [tappedMsgId,  setTappedMsgId]  = useState(null)
   const [editingMsgId, setEditingMsgId] = useState(null)
   const [editDraft, setEditDraft]       = useState('')
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false)
@@ -293,7 +294,9 @@ export default function Messages() {
             </div>
 
             {/* Messages */}
-            <div style={{ flex:1, overflowY:'auto', padding:'20px', display:'flex', flexDirection:'column', gap:4 }}>
+            <div style={{ flex:1, overflowY:'auto', padding:'20px', display:'flex', flexDirection:'column', gap:4 }}
+              onClick={() => isMobile && setTappedMsgId(null)}
+            >
               {loadingMsgs ? (
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%' }}><div className="spinner" /></div>
               ) : messages.length===0 ? (
@@ -307,6 +310,7 @@ export default function Messages() {
                 const isPostShare = !!msg.shared_post_id
                 const isEditing = editingMsgId===msg.id
                 const hovered   = hoveredMsgId===msg.id
+                const tapped    = isMobile && tappedMsgId===msg.id
 
                 return (
                   <div key={msg.id}>
@@ -319,15 +323,17 @@ export default function Messages() {
                     <div
                       className="fade-up"
                       style={{ display:'flex', flexDirection:'column', alignItems:fromMe?'flex-end':'flex-start', marginBottom:2, gap:2 }}
-                      onMouseEnter={() => setHoveredMsgId(msg.id)}
-                      onMouseLeave={() => setHoveredMsgId(null)}
+                      onMouseEnter={() => !isMobile && setHoveredMsgId(msg.id)}
+                      onMouseLeave={() => !isMobile && setHoveredMsgId(null)}
                     >
                       {/* Post share card */}
                       {isPostShare && (
                         <>
                           <div style={{ display:'flex', justifyContent:fromMe?'flex-end':'flex-start', alignItems:'center', gap:6 }}>
-                            {fromMe && <MsgActions visible={hovered && !isEditing} onEdit={() => startEdit(msg)} onDelete={() => deleteMessage(msg.id)} />}
-                            <SharedPostCard post={msg.shared_post} fromMe={fromMe} />
+                            {fromMe && <MsgActions visible={(hovered || tapped) && !isEditing} onEdit={() => { startEdit(msg); setTappedMsgId(null) }} onDelete={() => { deleteMessage(msg.id); setTappedMsgId(null) }} />}
+                            <div onClick={isMobile && fromMe ? (e) => { e.stopPropagation(); setTappedMsgId(v => v===msg.id ? null : msg.id) } : undefined} style={{ cursor: isMobile && fromMe ? 'pointer' : 'default' }}>
+                              <SharedPostCard post={msg.shared_post} fromMe={fromMe} />
+                            </div>
                           </div>
                           <div style={{ fontSize:10, color:'var(--text-3)', paddingLeft:fromMe?0:4, paddingRight:fromMe?4:0 }}>
                             {fromMe?'You':activeUser?.display_name?.split(' ')[0]} shared a post · {timeStr(msg.created_at)}
@@ -338,9 +344,11 @@ export default function Messages() {
                       {/* Text bubble */}
                       {!isPostShare && (
                         <>
-                          <div style={{ display:'flex', alignItems:'center', gap:6, maxWidth:'72%' }}>
-                            {fromMe && <MsgActions visible={hovered && !isEditing} onEdit={() => startEdit(msg)} onDelete={() => deleteMessage(msg.id)} />}
+                          <div style={{ display:'flex', alignItems:'center', gap:6, maxWidth: isMobile ? '85%' : '72%', position: 'relative' }}>
+                            {/* Desktop: buttons float to the left of the bubble on hover */}
+                            {fromMe && !isMobile && <MsgActions visible={hovered && !isEditing} onEdit={() => startEdit(msg)} onDelete={() => deleteMessage(msg.id)} />}
 
+                            {/* Mobile: tap bubble to reveal actions */}
                             {/* Edit mode */}
                             {isEditing ? (
                               <div style={{ flex:1 }}>
@@ -362,14 +370,18 @@ export default function Messages() {
                               </div>
                             ) : (
                               /* Normal bubble */
-                              <div style={{
-                                padding:'9px 14px',
-                                borderRadius: fromMe?'18px 18px 4px 18px':'18px 18px 18px 4px',
-                                background: fromMe?`linear-gradient(135deg,${campusColor},#7c3aed)`:'rgba(255,255,255,0.07)',
-                                color:'#fff', fontSize:14, lineHeight:1.5, wordBreak:'break-word',
-                                border: fromMe?'none':'1px solid rgba(255,255,255,0.10)',
-                                backdropFilter: fromMe?'none':'blur(28px) saturate(150%)',
-                                WebkitBackdropFilter: fromMe?'none':'blur(28px) saturate(150%)',
+                              <div
+                                onClick={isMobile && fromMe ? (e) => { e.stopPropagation(); setTappedMsgId(v => v===msg.id ? null : msg.id) } : undefined}
+                                style={{
+                                  padding:'9px 14px',
+                                  borderRadius: fromMe?'18px 18px 4px 18px':'18px 18px 18px 4px',
+                                  background: fromMe?`linear-gradient(135deg,${campusColor},#7c3aed)`:'rgba(255,255,255,0.07)',
+                                  color:'#fff', fontSize:14, lineHeight:1.5, wordBreak:'break-word',
+                                  border: fromMe?'none':'1px solid rgba(255,255,255,0.10)',
+                                  backdropFilter: fromMe?'none':'blur(28px) saturate(150%)',
+                                  WebkitBackdropFilter: fromMe?'none':'blur(28px) saturate(150%)',
+                                  cursor: isMobile && fromMe ? 'pointer' : 'default',
+                                  outline: isMobile && tapped ? `2px solid ${campusColor}44` : 'none',
                               }}>
                                 {msg.text}
                                 <div style={{ fontSize:10, marginTop:3, opacity:0.6, textAlign:'right', display:'flex', justifyContent:'flex-end', gap:5, alignItems:'center' }}>
@@ -379,6 +391,12 @@ export default function Messages() {
                               </div>
                             )}
                           </div>
+                          {/* Mobile: action buttons below bubble on tap */}
+                          {isMobile && fromMe && tapped && !isEditing && (
+                            <div style={{ display:'flex', gap:4, justifyContent:'flex-end', marginTop:4, alignSelf:'flex-end' }}>
+                              <MsgActions visible={true} onEdit={() => { startEdit(msg); setTappedMsgId(null) }} onDelete={() => { deleteMessage(msg.id); setTappedMsgId(null) }} />
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
