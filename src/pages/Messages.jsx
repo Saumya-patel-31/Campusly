@@ -191,7 +191,12 @@ export default function Messages() {
 
   return (
     <Layout>
-      <div style={{ display:'flex', height: isMobile ? 'calc(100vh - 134px)' : '100vh', overflow:'hidden' }}>
+      <div style={{
+        display: 'flex', overflow: 'hidden',
+        ...(isMobile
+          ? { position:'fixed', top:54, left:0, right:0, bottom:0, zIndex:50 }
+          : { height:'100vh' })
+      }}>
 
         {/* ── Inbox sidebar ── */}
         <div style={{ width: isMobile ? '100%' : 290, display: showList ? 'flex' : 'none', flexDirection:'column', overflowY:'auto', background:'rgba(255,255,255,0.055)', backdropFilter:'blur(28px) saturate(150%)', WebkitBackdropFilter:'blur(28px) saturate(150%)', borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.10)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.07)' }}>

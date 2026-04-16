@@ -145,7 +145,49 @@ function evaluateGuess(guess, target) {
 
 const TILE_STATUS_BG = { correct: '#22c55e', present: '#eab308', absent: '#2d3748', '': 'rgba(255,255,255,0.06)' }
 
-function WordleGame({ onComplete, userId, isMobile }) {
+// Computes Wordle tile + keyboard sizes that always fit the current viewport.
+// No hardcoded breakpoints — recalculates on every resize.
+function useWordleSizes() {
+  function compute() {
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+
+    // Width constraint: 5 tiles + 4 gaps inside ~60 px of horizontal padding
+    const tileGap    = Math.max(3, Math.round(vw * 0.011))
+    const maxByWidth = Math.floor((vw - 60 - 4 * tileGap) / 5)
+
+    // Height budget:
+    //   54  topbar  |  80  bottom nav  |  56  outer padding (28 × 2)
+    //   82  game-card header           |  32  panel padding (16 × 2)
+    //   12  board→keyboard gap
+    // Board  : 6t + 5g
+    // Keyboard: 3 × (0.75 t) + 2g  →  together: 8.25 t + 7 g ≤ available
+    const available  = vh - 54 - 80 - 56 - 82 - 32 - 12
+    const maxByHeight = Math.floor((available - 7 * tileGap) / 8.25)
+
+    const tileSize = Math.max(28, Math.min(54, maxByWidth, maxByHeight))
+    const keyH     = Math.max(26, Math.round(tileSize * 0.75))
+    const keyW     = Math.max(20, Math.round(tileSize * 0.60))
+    const keyWide  = Math.max(36, Math.round(tileSize * 0.92))
+    const keyGap   = tileGap
+    const keyFs    = Math.max(8,  Math.round(tileSize * 0.22))
+    const tileFs   = Math.max(12, Math.round(tileSize * 0.40))
+    const boardGap = Math.max(8,  Math.round(tileSize * 0.25))
+
+    return { tileSize, tileGap, keyH, keyW, keyWide, keyGap, keyFs, tileFs, boardGap }
+  }
+
+  const [sizes, setSizes] = useState(compute)
+  useEffect(() => {
+    const handler = () => setSizes(compute())
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+
+  return sizes
+}
+
+function WordleGame({ onComplete, userId }) {
   const todayStr = getTodayStr()
   const storageKey = `campusly_wordle_${userId}_${todayStr}`
   const dailyTarget = seededPick(WORDLE_WORDS, getDailySeed())
@@ -214,14 +256,7 @@ function WordleGame({ onComplete, userId, isMobile }) {
     return row.map(c => ({ ...c, current:false }))
   })
 
-  const tileSize = isMobile ? 44 : 54
-  const tileGap  = isMobile ? 4  : 6
-  const keyH     = isMobile ? 38 : 44
-  const keyW     = isMobile ? 28 : 36
-  const keyWide  = isMobile ? 46 : 58
-  const keyGap   = isMobile ? 4  : 5
-  const keyFs    = isMobile ? 11 : 12
-  const boardGap = isMobile ? 12 : 18
+  const { tileSize, tileGap, keyH, keyW, keyWide, keyGap, keyFs, tileFs, boardGap } = useWordleSizes()
 
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:boardGap }}>
@@ -264,7 +299,7 @@ function WordleGame({ onComplete, userId, isMobile }) {
                 border: `2px solid ${cell.status ? 'transparent' : cell.letter ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.10)'}`,
                 background: TILE_STATUS_BG[cell.status],
                 display:'flex', alignItems:'center', justifyContent:'center',
-                fontFamily:'var(--font-display)', fontWeight:800, fontSize: isMobile ? 18 : 22, color:'white',
+                fontFamily:'var(--font-display)', fontWeight:800, fontSize:tileFs, color:'white',
                 transition:'background 0.3s, border-color 0.15s',
               }}>
                 {cell.letter}
@@ -799,8 +834,8 @@ export default function DailyGames() {
 
                   {/* Inline game panel */}
                   {open && !done && (
-                    <div className="game-panel" style={{ ...panel, marginTop:6, padding: isMobile ? '16px 10px' : '28px 24px' }}>
-                      {game.id === 'wordle'  && <WordleGame  isMobile={isMobile} userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle', won, score); setActiveGame(null) }} />}
+                    <div className="game-panel" style={{ ...panel, marginTop:6, padding:'clamp(10px, 2.5vh, 28px) clamp(8px, 2.5vw, 24px)' }}>
+                      {game.id === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle', won, score); setActiveGame(null) }} />}
                       {game.id === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
                       {game.id === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz', won, score); setActiveGame(null) }} />}
                     </div>
