@@ -145,7 +145,7 @@ function evaluateGuess(guess, target) {
 
 const TILE_STATUS_BG = { correct: '#22c55e', present: '#eab308', absent: '#2d3748', '': 'rgba(255,255,255,0.06)' }
 
-function WordleGame({ onComplete, userId }) {
+function WordleGame({ onComplete, userId, isMobile }) {
   const todayStr = getTodayStr()
   const storageKey = `campusly_wordle_${userId}_${todayStr}`
   const dailyTarget = seededPick(WORDLE_WORDS, getDailySeed())
@@ -214,8 +214,17 @@ function WordleGame({ onComplete, userId }) {
     return row.map(c => ({ ...c, current:false }))
   })
 
+  const tileSize = isMobile ? 44 : 54
+  const tileGap  = isMobile ? 4  : 6
+  const keyH     = isMobile ? 38 : 44
+  const keyW     = isMobile ? 28 : 36
+  const keyWide  = isMobile ? 46 : 58
+  const keyGap   = isMobile ? 4  : 5
+  const keyFs    = isMobile ? 11 : 12
+  const boardGap = isMobile ? 12 : 18
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:18 }}>
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:boardGap }}>
       {/* Game-over overlay — click anywhere to dismiss */}
       {showResult && (
         <div onClick={() => setShowResult(false)} style={{
@@ -246,16 +255,16 @@ function WordleGame({ onComplete, userId }) {
       )}
 
       {/* Board */}
-      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:tileGap }}>
         {displayBoard.map((row, rIdx) => (
-          <div key={rIdx} style={{ display:'flex', gap:6 }}>
+          <div key={rIdx} style={{ display:'flex', gap:tileGap }}>
             {row.map((cell, cIdx) => (
               <div key={cIdx} style={{
-                width:54, height:54, borderRadius:8,
+                width:tileSize, height:tileSize, borderRadius:8,
                 border: `2px solid ${cell.status ? 'transparent' : cell.letter ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.10)'}`,
                 background: TILE_STATUS_BG[cell.status],
                 display:'flex', alignItems:'center', justifyContent:'center',
-                fontFamily:'var(--font-display)', fontWeight:800, fontSize:22, color:'white',
+                fontFamily:'var(--font-display)', fontWeight:800, fontSize: isMobile ? 18 : 22, color:'white',
                 transition:'background 0.3s, border-color 0.15s',
               }}>
                 {cell.letter}
@@ -266,17 +275,17 @@ function WordleGame({ onComplete, userId }) {
       </div>
 
       {/* On-screen keyboard */}
-      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+      <div style={{ display:'flex', flexDirection:'column', gap:keyGap }}>
         {KEYBOARD_ROWS.map((row, rIdx) => (
-          <div key={rIdx} style={{ display:'flex', gap:5, justifyContent:'center' }}>
+          <div key={rIdx} style={{ display:'flex', gap:keyGap, justifyContent:'center' }}>
             {row.map(key => {
               const s = keyColors[key] || ''
               return (
                 <button key={key} onClick={() => handleKey(key)} style={{
-                  width: (key === 'ENTER' || key === '⌫') ? 58 : 36, height:44,
+                  width: (key === 'ENTER' || key === '⌫') ? keyWide : keyW, height:keyH,
                   borderRadius:6, border:'none', cursor:'pointer',
                   background: s === 'correct' ? '#22c55e' : s === 'present' ? '#eab308' : s === 'absent' ? '#374151' : 'rgba(255,255,255,0.12)',
-                  color:'white', fontFamily:'var(--font-display)', fontWeight:700, fontSize:12,
+                  color:'white', fontFamily:'var(--font-display)', fontWeight:700, fontSize:keyFs,
                   transition:'background 0.2s',
                 }}>
                   {key}
@@ -790,8 +799,8 @@ export default function DailyGames() {
 
                   {/* Inline game panel */}
                   {open && !done && (
-                    <div className="game-panel" style={{ ...panel, marginTop:6, padding:'28px 24px' }}>
-                      {game.id === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle', won, score); setActiveGame(null) }} />}
+                    <div className="game-panel" style={{ ...panel, marginTop:6, padding: isMobile ? '16px 10px' : '28px 24px' }}>
+                      {game.id === 'wordle'  && <WordleGame  isMobile={isMobile} userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle', won, score); setActiveGame(null) }} />}
                       {game.id === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
                       {game.id === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz', won, score); setActiveGame(null) }} />}
                     </div>

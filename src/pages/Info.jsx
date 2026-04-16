@@ -725,48 +725,47 @@ function parseWikiExtract(rawText) {
 }
 
 async function fetchUniversityWiki(campusName) {
-  const headers = { 'User-Agent': 'Campusly/1.0 (campus-social-app)' }
+  // All requests use w/api.php with origin=* — guaranteed CORS support on all browsers/devices
+  const api = (params) =>
+    fetch(`https://en.wikipedia.org/w/api.php?${new URLSearchParams({ format: 'json', origin: '*', ...params })}`)
+      .then(r => r.json())
 
   // Step 1: Search for the right Wikipedia article
-  const searchRes = await fetch(
-    `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(campusName)}&format=json&origin=*&srlimit=8&srnamespace=0`,
-    { headers }
-  )
-  const searchData = await searchRes.json()
-  const results = (searchData.query?.search || [])
+  const searchData = await api({ action: 'query', list: 'search', srsearch: campusName, srlimit: '8', srnamespace: '0' })
+  const results = searchData.query?.search || []
 
-  // Prefer articles that mention "university", "college", "institute" in the title
   const match =
     results.find(r => r.title.toLowerCase() === campusName.toLowerCase()) ||
     results.find(r => /university|college|institute|polytechnic/i.test(r.title)) ||
     results[0]
 
   if (!match) return null
-  const wikiTitle = match.title
 
-  // Step 2: Fetch summary (thumbnail, description, etc.)
-  const [summaryRes, articleRes] = await Promise.all([
-    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`, { headers }),
-    fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&titles=${encodeURIComponent(wikiTitle)}&format=json&origin=*&explaintext=true&exsectionformat=wiki`,
-      { headers }
-    ),
-  ])
+  // Step 2: Fetch everything in one request — extract + thumbnail + description + page url
+  const pageData = await api({
+    action:          'query',
+    prop:            'extracts|pageimages|description|info',
+    titles:          match.title,
+    explaintext:     'true',
+    exsectionformat: 'wiki',
+    pithumbsize:     '400',
+    inprop:          'url',
+  })
 
-  const summary    = await summaryRes.json()
-  const articleData = await articleRes.json()
-  const pages      = articleData.query?.pages || {}
-  const page       = Object.values(pages)[0]
-  const rawText    = page?.extract || ''
+  const page = Object.values(pageData.query?.pages || {})[0]
+  if (!page || page.missing !== undefined) return null
 
+  const rawText = page.extract || ''
   const sections = parseWikiExtract(rawText)
+  // First non-empty paragraph = summary
+  const summary = rawText.split(/\n\s*\n/).find(p => p.trim().length > 40)?.trim() || rawText.slice(0, 400)
 
   return {
-    title:     (summary.displaytitle || wikiTitle).replace(/<[^>]+>/g, ''),
-    summary:   summary.extract,
-    thumbnail: summary.thumbnail?.source,
-    wikiUrl:   summary.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(wikiTitle)}`,
-    location:  summary.description,
+    title:     page.title,
+    summary,
+    thumbnail: page.thumbnail?.source,
+    wikiUrl:   page.fullurl || `https://en.wikipedia.org/wiki/${encodeURIComponent(match.title)}`,
+    location:  page.description,
     sections,
   }
 }
@@ -926,6 +925,8 @@ export default function Info() {
 
     setLoading(true)
     setError('')
+    // On retry, bust the cache so we don't serve a previously-failed result
+    if (retryKey > 0) localStorage.removeItem(getCacheKey(domain))
     fetchUniversityWiki(campusName)
       .then(data => {
         if (data) { writeCache(domain, data); setWikiData(data) }

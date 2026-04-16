@@ -191,7 +191,7 @@ export default function Messages() {
 
   return (
     <Layout>
-      <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
+      <div style={{ display:'flex', height: isMobile ? 'calc(100vh - 134px)' : '100vh', overflow:'hidden' }}>
 
         {/* ── Inbox sidebar ── */}
         <div style={{ width: isMobile ? '100%' : 290, display: showList ? 'flex' : 'none', flexDirection:'column', overflowY:'auto', background:'rgba(255,255,255,0.055)', backdropFilter:'blur(28px) saturate(150%)', WebkitBackdropFilter:'blur(28px) saturate(150%)', borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.10)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.07)' }}>
@@ -255,15 +255,20 @@ export default function Messages() {
               {isMobile && (
                 <button onClick={() => { setActiveUser(null); navigate('/messages') }} style={{ background:'transparent', border:'none', padding:'4px 8px 4px 0', fontSize:22, color:'var(--text-2)', cursor:'pointer', display:'flex', alignItems:'center' }}>‹</button>
               )}
-              <AvatarImg src={activeUser.avatar_url} name={activeUser.display_name} size={38} />
-              <div>
-                <div style={{ fontWeight:700, fontSize:15, fontFamily:'var(--font-display)' }}>{activeUser.display_name}</div>
-                <div style={{ fontSize:12, color:'var(--text-3)' }}>@{activeUser.username}{activeUser.major?` · ${activeUser.major}`:''}</div>
+              <div
+                onClick={isMobile ? () => navigate(`/profile/${activeUser.username}`) : undefined}
+                style={{ display:'flex', alignItems:'center', gap:12, cursor: isMobile ? 'pointer' : 'default' }}
+              >
+                <AvatarImg src={activeUser.avatar_url} name={activeUser.display_name} size={38} />
+                <div>
+                  <div style={{ fontWeight:700, fontSize:15, fontFamily:'var(--font-display)' }}>{activeUser.display_name}</div>
+                  <div style={{ fontSize:12, color:'var(--text-3)' }}>@{activeUser.username}{activeUser.major?` · ${activeUser.major}`:''}</div>
+                </div>
               </div>
 
               {/* Header actions */}
               <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center', position:'relative' }} ref={headerMenuRef}>
-                <button onClick={()=>navigate(`/profile/${activeUser.username}`)} className="btn-ghost" style={{ fontSize:13 }}>View profile</button>
+                {!isMobile && <button onClick={()=>navigate(`/profile/${activeUser.username}`)} className="btn-ghost" style={{ fontSize:13 }}>View profile</button>}
 
                 {/* ⋯ menu */}
                 <button
@@ -420,7 +425,7 @@ export default function Messages() {
             </form>
           </div>
         ) : (
-          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:14, color:'var(--text-3)' }}>
+          <div style={{ flex:1, display: showChat ? 'flex' : 'none', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:14, color:'var(--text-3)' }}>
             <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity:0.3 }}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             <div style={{ fontSize:14 }}>Select a conversation to start chatting</div>
             <button onClick={()=>navigate('/explore')} className="btn-primary" style={{ fontSize:13, marginTop:4 }}>Find people →</button>
