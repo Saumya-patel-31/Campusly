@@ -168,11 +168,11 @@ function useWordleSizes() {
     const maxByBoard = Math.floor((availWidth - 4 * gap) / 5)
 
     // ── Height constraint ────────────────────────────────────────────
-    // Budget: vh − topbar(54) − bottomNav(80) − outerVPad(12)
-    //             − cardHeader(74) − panelVPad(24) − boardKeyGap(8)
+    // On mobile the game is a fixed overlay: top=54, bottom=0
+    // Budget: overlayH(vh−54) − overlayHeader(52) − vertPad(16) − boardKeyGap(8)
     // Board  : 6t + 5g
     // Keyboard: 3*(0.74t) + 2g  →  total: 8.22t + 7g ≤ heightBudget
-    const heightBudget = vh - 54 - 80 - 12 - 74 - 24 - 8
+    const heightBudget = vh - 54 - 52 - 16 - 8
     const maxByHeight = Math.floor((heightBudget - 7 * gap) / 8.22)
 
     const tileSize = Math.max(28, Math.min(54, maxByKeyboard, maxByBoard, maxByHeight))
@@ -850,13 +850,40 @@ export default function DailyGames() {
                     </div>
                   </div>
 
-                  {/* Inline game panel */}
+                  {/* Game panel — full-screen overlay on mobile, inline on desktop */}
                   {open && !done && (
-                    <div className="game-panel" style={{ ...panel, marginTop:6, padding: isMobile ? '12px 8px' : '28px 24px', borderRadius: isMobile ? '0 0 16px 16px' : 16 }}>
-                      {game.id === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle', won, score); setActiveGame(null) }} />}
-                      {game.id === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
-                      {game.id === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz', won, score); setActiveGame(null) }} />}
-                    </div>
+                    isMobile ? (
+                      <div style={{
+                        position:'fixed', top:54, left:0, right:0, bottom:0, zIndex:250,
+                        background:'#070710', display:'flex', flexDirection:'column', overflow:'hidden',
+                      }}>
+                        {/* Overlay header with back arrow */}
+                        <div style={{
+                          display:'flex', alignItems:'center', gap:10, padding:'10px 14px',
+                          borderBottom:'1px solid rgba(255,255,255,0.10)', flexShrink:0,
+                          background:'rgba(255,255,255,0.04)',
+                        }}>
+                          <button onClick={() => setActiveGame(null)} style={{ background:'transparent', border:'none', color:'var(--text-2)', fontSize:24, cursor:'pointer', padding:'2px 10px 2px 0', lineHeight:1, fontWeight:300 }}>‹</button>
+                          <span style={{ fontSize:18 }}>{game.emoji}</span>
+                          <div>
+                            <div style={{ fontFamily:'var(--font-display)', fontWeight:700, fontSize:14 }}>{game.name}</div>
+                            <div style={{ fontSize:11, color:'var(--text-3)' }}>{game.desc}</div>
+                          </div>
+                        </div>
+                        {/* Centered game content */}
+                        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', padding:'8px 0' }}>
+                          {game.id === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle',  won, score); setActiveGame(null) }} />}
+                          {game.id === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
+                          {game.id === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz',    won, score); setActiveGame(null) }} />}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="game-panel" style={{ ...panel, marginTop:6, padding:'28px 24px', borderRadius:16 }}>
+                        {game.id === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle',  won, score); setActiveGame(null) }} />}
+                        {game.id === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
+                        {game.id === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz',    won, score); setActiveGame(null) }} />}
+                      </div>
+                    )
                   )}
                 </div>
               )
