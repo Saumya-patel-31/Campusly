@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Layout from '../components/Layout.jsx'
 import { useAuth } from '../context/useAuth.js'
@@ -60,11 +60,6 @@ const WORDLE_WORDS = [
   'DORMS','GRANT','LOANS','CLUBS','CORPS','HONOR','MERIT','SIGMA','DELTA',
 ]
 
-const KEYBOARD_ROWS = [
-  ['Q','W','E','R','T','Y','U','I','O','P'],
-  ['A','S','D','F','G','H','J','K','L'],
-  ['ENTER','Z','X','C','V','B','N','M','⌫'],
-]
 
 const CONNECT_SETS = [
   {
@@ -146,34 +141,19 @@ function evaluateGuess(guess, target) {
 
 const TILE_STATUS_BG = { correct: '#22c55e', present: '#eab308', absent: '#2d3748', '': 'rgba(255,255,255,0.06)' }
 
-// Computes Wordle tile + keyboard sizes.
-// Keyboard width is handled entirely via CSS flex (keys stretch to fill the row),
-// so this hook only needs to figure out tile size and row heights.
+// Computes tile size only — no keyboard sizing needed (native keyboard is used).
 function useWordleSizes() {
   function compute() {
     const vw = window.innerWidth
     const vh = window.innerHeight
-
-    // Container padding is '8px 12px' → 24px total horizontal, so tile availWidth = vw-24
-    const availWidth = vw - 24
     const gap = Math.max(4, Math.round(vw * 0.012))
-
-    // Tile size: fit 5 tiles in availWidth
-    const maxByBoard = Math.floor((availWidth - 4 * gap) / 5)
-
-    // Height budget: overlay starts at 54, header ~52, vertical padding 16
-    const heightBudget = vh - 54 - 52 - 16
-    // Board: 6t+5g, gap between board/keyboard: gap, Keyboard: 3*keyH+2*gap
-    // keyH ≈ 0.78*tileSize  → total ≈ 8.34t + 8g ≤ heightBudget
-    const maxByHeight = Math.floor((heightBudget - 8 * gap) / 8.34)
-
-    const tileSize = Math.max(26, Math.min(52, maxByBoard, maxByHeight))
-    const keyH     = Math.max(36, Math.round(tileSize * 0.78))
-    const keyGap   = Math.max(4,  Math.round(vw * 0.01))
-    const keyFs    = Math.max(9,  Math.round(tileSize * 0.22))
-    const tileFs   = Math.max(11, Math.round(tileSize * 0.40))
-
-    return { tileSize, tileGap: gap, keyH, keyGap, keyFs, tileFs, boardGap: gap }
+    const availWidth = vw - 32
+    const maxByBoard  = Math.floor((availWidth - 4 * gap) / 5)
+    // Height budget: overlay top=54, header~52, padding 24, hint row ~28
+    const maxByHeight = Math.floor((vh - 54 - 52 - 24 - 28 - 5 * gap) / 6)
+    const tileSize = Math.max(40, Math.min(64, maxByBoard, maxByHeight))
+    const tileFs   = Math.max(14, Math.round(tileSize * 0.42))
+    return { tileSize, tileGap: gap, tileFs }
   }
 
   const [sizes, setSizes] = useState(compute)
@@ -210,13 +190,6 @@ function WordleGame({ onComplete, userId }) {
       setTimeout(() => setShowResult(true), 400)
     }
   }, [state.gameOver])
-
-  const keyColors = {}
-  state.board.slice(0, state.currentRow).forEach(row =>
-    row.forEach(({ letter, status }) => {
-      if (letter && (!keyColors[letter] || status === 'correct')) keyColors[letter] = status
-    })
-  )
 
   const handleKey = useCallback((key) => {
     setState(prev => {
@@ -255,10 +228,49 @@ function WordleGame({ onComplete, userId }) {
     return row.map(c => ({ ...c, current:false }))
   })
 
-  const { tileSize, tileGap, keyH, keyGap, keyFs, tileFs, boardGap } = useWordleSizes()
+  const { tileSize, tileGap, tileFs } = useWordleSizes()
+  const inputRef = useRef(null)
+  const [focused, setFocused] = useState(false)
+
+  // Focus the hidden input to open native keyboard on mobile
+  function focusInput() { inputRef.current?.focus() }
+
+  // Handle input from the native keyboard (typed characters)
+  function onInputChange(e) {
+    const val = e.target.value
+    if (val) {
+      const ch = val[val.length - 1]
+      if (/^[A-Za-z]$/.test(ch)) handleKey(ch.toUpperCase())
+    }
+    // Always keep the input empty so every keystroke fires onChange
+    e.target.value = ''
+  }
+
+  // Handle special keys (Backspace, Enter) from native keyboard
+  function onInputKeyDown(e) {
+    if (e.key === 'Backspace') { e.preventDefault(); handleKey('⌫') }
+    if (e.key === 'Enter')     { e.preventDefault(); handleKey('ENTER') }
+  }
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:boardGap, width:'100%' }}>
+    <div
+      onClick={focusInput}
+      style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:tileGap, width:'100%', cursor:'text' }}
+    >
+      {/* Hidden input — captures native keyboard on mobile */}
+      <input
+        ref={inputRef}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onChange={onInputChange}
+        onKeyDown={onInputKeyDown}
+        autoCapitalize="none"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        inputMode="text"
+        style={{ position:'absolute', opacity:0, width:1, height:1, pointerEvents:'none', zIndex:-1 }}
+      />
       {/* Game-over overlay — click anywhere to dismiss */}
       {showResult && (
         <div onClick={() => setShowResult(false)} style={{
@@ -308,30 +320,18 @@ function WordleGame({ onComplete, userId }) {
         ))}
       </div>
 
-      {/* On-screen keyboard — keys use flex:1 so they fill the row automatically */}
-      <div style={{ display:'flex', flexDirection:'column', gap:keyGap, width:'100%' }}>
-        {KEYBOARD_ROWS.map((row, rIdx) => (
-          <div key={rIdx} style={{ display:'flex', gap:keyGap }}>
-            {row.map(key => {
-              const isWide = key === 'ENTER' || key === '⌫'
-              const s = keyColors[key] || ''
-              return (
-                <button key={key} onClick={() => handleKey(key)} style={{
-                  flex: isWide ? 1.5 : 1,
-                  minWidth: 0,
-                  height: keyH,
-                  borderRadius:6, border:'none', cursor:'pointer',
-                  background: s === 'correct' ? '#22c55e' : s === 'present' ? '#eab308' : s === 'absent' ? '#374151' : 'rgba(255,255,255,0.12)',
-                  color:'white', fontFamily:'var(--font-display)', fontWeight:700, fontSize:keyFs,
-                  transition:'background 0.2s',
-                }}>
-                  {key}
-                </button>
-              )
-            })}
-          </div>
-        ))}
-      </div>
+      {/* Tap-to-type hint */}
+      {!state.gameOver && (
+        <div style={{
+          fontSize:12, color: focused ? 'var(--campus)' : 'var(--text-3)',
+          border: `1px solid ${focused ? 'var(--campus-border)' : 'rgba(255,255,255,0.10)'}`,
+          borderRadius:20, padding:'6px 18px',
+          background: focused ? 'var(--campus-dim)' : 'transparent',
+          transition:'all 0.2s', userSelect:'none',
+        }}>
+          {focused ? '⌨ typing…' : 'tap here · then type'}
+        </div>
+      )}
     </div>
   )
 }
