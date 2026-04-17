@@ -154,9 +154,8 @@ function useWordleSizes() {
     const vw = window.innerWidth
     const vh = window.innerHeight
 
-    // Outer container has 0 horizontal padding on mobile (we set padding:'12px 0').
-    // Game panel has 8px padding each side = 16px total.
-    const availWidth = vw - 16
+    // Game content container has padding:'8px 12px', so 12px each side = 24px total.
+    const availWidth = vw - 24
     const gap = Math.max(3, Math.round(vw * 0.008))  // shared tile + key gap
 
     // ── Width constraint (keyboard is wider than board) ──────────────
@@ -772,9 +771,9 @@ export default function DailyGames() {
   const activeGameMeta = GAME_META.find(g => g.id === activeGame)
   const mobileOverlay = isMobile && activeGameMeta && !scores[activeGameMeta.id]
     ? createPortal(
-        <div style={{ position:'fixed', top:54, left:0, width:'100vw', bottom:0, zIndex:250, background:'#070710', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        <div style={{ position:'fixed', top:54, left:0, right:0, bottom:0, zIndex:250, background:'#070710', display:'flex', flexDirection:'column', overflow:'hidden' }}>
           {/* Header */}
-          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderBottom:'1px solid rgba(255,255,255,0.10)', flexShrink:0, background:'rgba(255,255,255,0.04)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderBottom:'1px solid rgba(255,255,255,0.10)', flexShrink:0, background:'rgba(255,255,255,0.04)', width:'100%' }}>
             <button onClick={() => setActiveGame(null)} style={{ background:'transparent', border:'none', color:'var(--text-2)', fontSize:26, cursor:'pointer', padding:'2px 10px 2px 0', lineHeight:1 }}>‹</button>
             <span style={{ fontSize:18 }}>{activeGameMeta.emoji}</span>
             <div>
@@ -783,7 +782,7 @@ export default function DailyGames() {
             </div>
           </div>
           {/* Centered game */}
-          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', padding:'8px 0' }}>
+          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', overflowX:'hidden', overflowY:'auto', padding:'8px 12px' }}>
             {activeGame === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle',  won, score); setActiveGame(null) }} />}
             {activeGame === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
             {activeGame === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz',    won, score); setActiveGame(null) }} />}

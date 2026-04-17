@@ -195,7 +195,7 @@ export default function Messages() {
         display: 'flex', overflow: 'hidden',
         background: '#070710',
         ...(isMobile
-          ? { position:'fixed', top:54, left:0, width:'100vw', bottom:0, zIndex:250 }
+          ? { position:'fixed', top:54, left:0, right:0, bottom:0, zIndex:250 }
           : { height:'100vh' })
       }}>
 
@@ -256,7 +256,7 @@ export default function Messages() {
           <div style={{ flex:1, display: showChat ? 'flex' : 'none', flexDirection:'column', overflow:'hidden', width: isMobile ? '100%' : undefined }}>
 
             {/* Header */}
-            <div style={{ padding: isMobile ? '10px 14px' : '14px 20px', borderBottom:'1px solid rgba(255,255,255,0.10)', display:'flex', alignItems:'center', gap:12, flexShrink:0, backdropFilter: isMobile ? 'none' : 'blur(28px) saturate(150%)', WebkitBackdropFilter: isMobile ? 'none' : 'blur(28px) saturate(150%)', background: isMobile ? '#0e0e1a' : 'rgba(255,255,255,0.055)', boxShadow:'0 2px 16px rgba(0,0,0,0.20)' }}>
+            <div style={{ padding: isMobile ? '10px 14px' : '14px 20px', borderBottom:'1px solid rgba(255,255,255,0.10)', display:'flex', alignItems:'center', gap:12, flexShrink:0, width:'100%', backdropFilter: isMobile ? 'none' : 'blur(28px) saturate(150%)', WebkitBackdropFilter: isMobile ? 'none' : 'blur(28px) saturate(150%)', background: isMobile ? '#0e0e1a' : 'rgba(255,255,255,0.055)', boxShadow:'0 2px 16px rgba(0,0,0,0.20)' }}>
               {/* Back button on mobile */}
               {isMobile && (
                 <button onClick={() => { setActiveUser(null); navigate('/messages') }} style={{ background:'transparent', border:'none', padding:'4px 8px 4px 0', fontSize:22, color:'var(--text-2)', cursor:'pointer', display:'flex', alignItems:'center' }}>‹</button>
@@ -418,7 +418,7 @@ export default function Messages() {
             </div>
 
             {/* Input */}
-            <form onSubmit={handleSend} style={{ padding: isMobile ? '10px 14px' : '14px 20px', paddingRight: isMobile ? '76px' : '20px', borderTop:'1px solid rgba(255,255,255,0.10)', display:'flex', gap:10, flexShrink:0, backdropFilter: isMobile ? 'none' : 'blur(28px) saturate(150%)', WebkitBackdropFilter: isMobile ? 'none' : 'blur(28px) saturate(150%)', background: isMobile ? '#0e0e1a' : 'rgba(255,255,255,0.055)', boxShadow:'0 -2px 16px rgba(0,0,0,0.20)' }}>
+            <form onSubmit={handleSend} style={{ padding: isMobile ? '10px 14px' : '14px 20px', borderTop:'1px solid rgba(255,255,255,0.10)', display:'flex', gap:10, flexShrink:0, width:'100%', backdropFilter: isMobile ? 'none' : 'blur(28px) saturate(150%)', WebkitBackdropFilter: isMobile ? 'none' : 'blur(28px) saturate(150%)', background: isMobile ? '#0e0e1a' : 'rgba(255,255,255,0.055)', boxShadow:'0 -2px 16px rgba(0,0,0,0.20)' }}>
               <textarea
                 placeholder={`Message ${activeUser.display_name.split(' ')[0]}…`}
                 value={draft}
