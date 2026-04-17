@@ -146,53 +146,34 @@ function evaluateGuess(guess, target) {
 
 const TILE_STATUS_BG = { correct: '#22c55e', present: '#eab308', absent: '#2d3748', '': 'rgba(255,255,255,0.06)' }
 
-// Computes Wordle tile + keyboard sizes that GUARANTEE everything fits the viewport.
-// Key insight: Row 1 has 10 keys — the keyboard is always the real width constraint,
-// not the 5-tile board. Recalculates on every resize, no hardcoded breakpoints.
+// Computes Wordle tile + keyboard sizes.
+// Keyboard width is handled entirely via CSS flex (keys stretch to fill the row),
+// so this hook only needs to figure out tile size and row heights.
 function useWordleSizes() {
   function compute() {
     const vw = window.innerWidth
     const vh = window.innerHeight
 
-    // Game content container has padding:'8px 12px', so 12px each side = 24px total.
+    // Container padding is '8px 12px' → 24px total horizontal, so tile availWidth = vw-24
     const availWidth = vw - 24
-    const gap = Math.max(3, Math.round(vw * 0.008))  // shared tile + key gap
+    const gap = Math.max(4, Math.round(vw * 0.012))
 
-    // ── Width constraint (keyboard is wider than board) ──────────────
-    // Row 1: Q W E R T Y U I O P = 10 keys + 9 gaps
-    // keyW = floor(tileSize * 0.60)  →  10 * (tileSize * 0.60) + 9*gap ≤ availWidth
-    //                                →  tileSize ≤ (availWidth − 9*gap) / 6
-    const maxByKeyboard = Math.floor((availWidth - 9 * gap) / 6)
-
-    // Board: 5 tiles + 4 gaps (looser, but keep for safety)
+    // Tile size: fit 5 tiles in availWidth
     const maxByBoard = Math.floor((availWidth - 4 * gap) / 5)
 
-    // ── Height constraint ────────────────────────────────────────────
-    // On mobile the game is a fixed overlay: top=54, bottom=0
-    // Budget: overlayH(vh−54) − overlayHeader(52) − vertPad(16) − boardKeyGap(8)
-    // Board  : 6t + 5g
-    // Keyboard: 3*(0.74t) + 2g  →  total: 8.22t + 7g ≤ heightBudget
-    const heightBudget = vh - 54 - 52 - 16 - 8
-    const maxByHeight = Math.floor((heightBudget - 7 * gap) / 8.22)
+    // Height budget: overlay starts at 54, header ~52, vertical padding 16
+    const heightBudget = vh - 54 - 52 - 16
+    // Board: 6t+5g, gap between board/keyboard: gap, Keyboard: 3*keyH+2*gap
+    // keyH ≈ 0.78*tileSize  → total ≈ 8.34t + 8g ≤ heightBudget
+    const maxByHeight = Math.floor((heightBudget - 8 * gap) / 8.34)
 
-    const tileSize = Math.max(28, Math.min(54, maxByKeyboard, maxByBoard, maxByHeight))
+    const tileSize = Math.max(26, Math.min(52, maxByBoard, maxByHeight))
+    const keyH     = Math.max(36, Math.round(tileSize * 0.78))
+    const keyGap   = Math.max(4,  Math.round(vw * 0.01))
+    const keyFs    = Math.max(9,  Math.round(tileSize * 0.22))
+    const tileFs   = Math.max(11, Math.round(tileSize * 0.40))
 
-    // keyW: floor to guarantee 10*keyW + 9*gap ≤ availWidth
-    const keyW    = Math.max(16, Math.min(
-      Math.floor(tileSize * 0.60),
-      Math.floor((availWidth - 9 * gap) / 10)
-    ))
-    const keyH    = Math.max(26, Math.round(tileSize * 0.74))
-    // keyWide: ENTER + ⌫; row3 = 2*keyWide + 7*keyW + 8*gap ≤ availWidth
-    const keyWide = Math.max(36, Math.min(
-      Math.round(tileSize * 0.95),
-      Math.floor((availWidth - 7 * keyW - 8 * gap) / 2)
-    ))
-    const keyFs   = Math.max(8,  Math.round(tileSize * 0.22))
-    const tileFs  = Math.max(12, Math.round(tileSize * 0.40))
-    const boardGap = gap
-
-    return { tileSize, tileGap: gap, keyH, keyW, keyWide, keyGap: gap, keyFs, tileFs, boardGap }
+    return { tileSize, tileGap: gap, keyH, keyGap, keyFs, tileFs, boardGap: gap }
   }
 
   const [sizes, setSizes] = useState(compute)
@@ -274,10 +255,10 @@ function WordleGame({ onComplete, userId }) {
     return row.map(c => ({ ...c, current:false }))
   })
 
-  const { tileSize, tileGap, keyH, keyW, keyWide, keyGap, keyFs, tileFs, boardGap } = useWordleSizes()
+  const { tileSize, tileGap, keyH, keyGap, keyFs, tileFs, boardGap } = useWordleSizes()
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:boardGap }}>
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:boardGap, width:'100%' }}>
       {/* Game-over overlay — click anywhere to dismiss */}
       {showResult && (
         <div onClick={() => setShowResult(false)} style={{
@@ -327,15 +308,18 @@ function WordleGame({ onComplete, userId }) {
         ))}
       </div>
 
-      {/* On-screen keyboard */}
-      <div style={{ display:'flex', flexDirection:'column', gap:keyGap }}>
+      {/* On-screen keyboard — keys use flex:1 so they fill the row automatically */}
+      <div style={{ display:'flex', flexDirection:'column', gap:keyGap, width:'100%' }}>
         {KEYBOARD_ROWS.map((row, rIdx) => (
-          <div key={rIdx} style={{ display:'flex', gap:keyGap, justifyContent:'center' }}>
+          <div key={rIdx} style={{ display:'flex', gap:keyGap }}>
             {row.map(key => {
+              const isWide = key === 'ENTER' || key === '⌫'
               const s = keyColors[key] || ''
               return (
                 <button key={key} onClick={() => handleKey(key)} style={{
-                  width: (key === 'ENTER' || key === '⌫') ? keyWide : keyW, height:keyH,
+                  flex: isWide ? 1.5 : 1,
+                  minWidth: 0,
+                  height: keyH,
                   borderRadius:6, border:'none', cursor:'pointer',
                   background: s === 'correct' ? '#22c55e' : s === 'present' ? '#eab308' : s === 'absent' ? '#374151' : 'rgba(255,255,255,0.12)',
                   color:'white', fontFamily:'var(--font-display)', fontWeight:700, fontSize:keyFs,
