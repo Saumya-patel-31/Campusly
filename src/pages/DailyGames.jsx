@@ -50,16 +50,18 @@ function shuffleSeeded(arr, seed) {
 
 // ── Game data ───────────────────────────────────────────────────
 
-const WORDLE_WORDS = [
-  'STUDY','GRADE','CLASS','MAJOR','FINAL','ESSAY','NOTES','BOOKS','CLUBS',
-  'LEARN','TUTOR','SCORE','PAPER','FIELD','SMART','BRAIN','FOCUS','BENCH',
-  'CHAIR','LUNCH','BADGE','CHALK','BOARD','QUOTE','DREAM','AWARD','SPACE',
-  'LIGHT','NIGHT','CROWD','FLOOR','STAGE','PANEL','TRUST','SPARK','PRIDE',
-  'FLAME','GRACE','LASER','SOUND','POWER','DANCE','MUSIC','CHESS','TRACK',
-  'READS','WORKS','PLANS','RESTS','TEAMS','THINK','WRITE','SOLVE','BUILD',
-  'DORMS','GRANT','LOANS','CLUBS','CORPS','HONOR','MERIT','SIGMA','DELTA',
+// ── Runner game obstacles ────────────────────────────────────────
+const CAMPUS_BUILDINGS = [
+  { type:'clockTower',  w:36,  h:88 },
+  { type:'dormTall',    w:50,  h:70 },
+  { type:'library',     w:82,  h:52 },
+  { type:'scienceLab',  w:60,  h:66 },
+  { type:'cafeteria',   w:88,  h:40 },
+  { type:'adminBlock',  w:64,  h:58 },
+  { type:'chapel',      w:42,  h:78 },
+  { type:'gymBuilding', w:92,  h:42 },
+  { type:'lectureHall', w:74,  h:52 },
 ]
-
 
 const CONNECT_SETS = [
   {
@@ -122,216 +124,598 @@ const QUIZ_SETS = [
 
 // ── Wordle ──────────────────────────────────────────────────────
 
-function evaluateGuess(guess, target) {
-  const result = Array(5).fill('absent')
-  const tArr = target.split('')
-  const gArr = guess.split('')
-  const used = Array(5).fill(false)
-  for (let i = 0; i < 5; i++) {
-    if (gArr[i] === tArr[i]) { result[i] = 'correct'; used[i] = true }
-  }
-  for (let i = 0; i < 5; i++) {
-    if (result[i] === 'correct') continue
-    for (let j = 0; j < 5; j++) {
-      if (!used[j] && gArr[i] === tArr[j]) { result[i] = 'present'; used[j] = true; break }
-    }
-  }
-  return result
+// ── Campus Runner ────────────────────────────────────────────────
+
+const RUNNER_FILL = '#c4b5fd'   // light lavender silhouette
+const RUNNER_BG   = '#0e0e1a'   // near-black background
+
+// Polyfill for roundRect (Safari <15.4)
+function rrect(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2)
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+  ctx.lineTo(x + r, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+  ctx.lineTo(x, y + r)
+  ctx.quadraticCurveTo(x, y, x + r, y)
+  ctx.closePath()
 }
 
-const TILE_STATUS_BG = { correct: '#22c55e', present: '#eab308', absent: '#2d3748', '': 'rgba(255,255,255,0.06)' }
+// ── Campus building silhouette renderer ─────────────────────────
+function drawBldg(ctx, type, bx, groundY, w, h, fill) {
+  const by = groundY - h
+  ctx.save()
+  ctx.fillStyle = fill
 
-// Computes tile size only — no keyboard sizing needed (native keyboard is used).
-function useWordleSizes() {
-  function compute() {
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    const gap = Math.max(4, Math.round(vw * 0.012))
-    const availWidth = vw - 32
-    const maxByBoard  = Math.floor((availWidth - 4 * gap) / 5)
-    // Height budget: overlay top=54, header~52, padding 24, hint row ~28
-    const maxByHeight = Math.floor((vh - 54 - 52 - 24 - 28 - 5 * gap) / 6)
-    const tileSize = Math.max(40, Math.min(64, maxByBoard, maxByHeight))
-    const tileFs   = Math.max(14, Math.round(tileSize * 0.42))
-    return { tileSize, tileGap: gap, tileFs }
+  switch (type) {
+    case 'clockTower': {
+      const tw = Math.round(w * 0.52), tx = bx + Math.round((w - tw) / 2)
+      // Spire
+      ctx.fillRect(tx + Math.round(tw * 0.3), by, Math.round(tw * 0.4), Math.round(h * 0.22))
+      // Main tower body
+      ctx.fillRect(tx, by + Math.round(h * 0.18), tw, Math.round(h * 0.82))
+      // Clock face hole
+      ctx.fillStyle = RUNNER_BG
+      ctx.beginPath()
+      ctx.arc(bx + Math.round(w / 2), by + Math.round(h * 0.36), Math.round(tw * 0.22), 0, Math.PI * 2)
+      ctx.fill()
+      break
+    }
+    case 'dormTall': {
+      ctx.fillRect(bx, by, w, h)
+      // Window grid (dark holes)
+      ctx.fillStyle = RUNNER_BG
+      const ww = Math.round(w * 0.17), wh = Math.round(h * 0.10)
+      const cols = 3, rows = 4
+      const xPad = Math.round((w - cols * (ww + 3) + 3) / 2)
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          ctx.fillRect(bx + xPad + c * (ww + 3), by + Math.round(h * 0.10) + r * Math.round(h * 0.22), ww, wh)
+        }
+      }
+      break
+    }
+    case 'library': {
+      // Main block
+      ctx.fillRect(bx, by + Math.round(h * 0.22), w, Math.round(h * 0.78))
+      // Pediment triangle
+      ctx.beginPath()
+      ctx.moveTo(bx - 4, by + Math.round(h * 0.22))
+      ctx.lineTo(bx + Math.round(w / 2), by)
+      ctx.lineTo(bx + w + 4, by + Math.round(h * 0.22))
+      ctx.closePath(); ctx.fill()
+      // Columns (dark)
+      ctx.fillStyle = RUNNER_BG
+      const nC = 4, cw = Math.round(w * 0.07)
+      for (let i = 0; i < nC; i++) {
+        ctx.fillRect(bx + Math.round(w * (i + 0.5) / nC) - Math.round(cw / 2), by + Math.round(h * 0.22), cw, Math.round(h * 0.78))
+      }
+      break
+    }
+    case 'scienceLab': {
+      ctx.fillRect(bx, by + Math.round(h * 0.34), w, Math.round(h * 0.66))
+      // Dome
+      const dr = Math.round(w * 0.28), dx = bx + Math.round(w / 2)
+      ctx.beginPath()
+      ctx.ellipse(dx, by + Math.round(h * 0.34), dr, Math.round(h * 0.38), 0, Math.PI, 0)
+      ctx.fill()
+      // Windows (dark)
+      ctx.fillStyle = RUNNER_BG
+      const sw = Math.round(w * 0.14), sh = Math.round(h * 0.13)
+      for (let i = 0; i < 3; i++) {
+        ctx.fillRect(bx + Math.round(w * (i + 0.5) / 3) - Math.round(sw / 2), by + Math.round(h * 0.52), sw, sh)
+      }
+      break
+    }
+    case 'cafeteria': {
+      ctx.fillRect(bx, by + Math.round(h * 0.28), w, Math.round(h * 0.72))
+      // Roof overhang
+      ctx.fillRect(bx - 4, by + Math.round(h * 0.24), w + 8, Math.round(h * 0.07))
+      // Chimneys
+      ctx.fillRect(bx + Math.round(w * 0.18), by, Math.round(w * 0.07), Math.round(h * 0.30))
+      ctx.fillRect(bx + Math.round(w * 0.32), by + Math.round(h * 0.08), Math.round(w * 0.06), Math.round(h * 0.22))
+      // Windows (dark)
+      ctx.fillStyle = RUNNER_BG
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(bx + Math.round(w * (i + 0.5) / 4) - Math.round(w * 0.07), by + Math.round(h * 0.44), Math.round(w * 0.14), Math.round(h * 0.18))
+      }
+      break
+    }
+    case 'adminBlock': {
+      ctx.fillRect(bx, by + Math.round(h * 0.16), w, Math.round(h * 0.84))
+      // Flagpole
+      ctx.fillRect(bx + Math.round(w * 0.45), by, Math.round(w * 0.04), Math.round(h * 0.19))
+      ctx.fillRect(bx + Math.round(w * 0.49), by, Math.round(w * 0.22), Math.round(h * 0.10))
+      // Entry arch (dark hole)
+      ctx.fillStyle = RUNNER_BG
+      const aw = Math.round(w * 0.28), ax = bx + Math.round((w - aw) / 2)
+      ctx.fillRect(ax, by + Math.round(h * 0.62), aw, Math.round(h * 0.38))
+      ctx.beginPath()
+      ctx.arc(ax + Math.round(aw / 2), by + Math.round(h * 0.62), Math.round(aw / 2), Math.PI, 0)
+      ctx.fill()
+      // Side windows
+      ctx.fillRect(bx + Math.round(w * 0.07), by + Math.round(h * 0.30), Math.round(w * 0.18), Math.round(h * 0.15))
+      ctx.fillRect(bx + Math.round(w * 0.75), by + Math.round(h * 0.30), Math.round(w * 0.18), Math.round(h * 0.15))
+      break
+    }
+    case 'chapel': {
+      ctx.fillRect(bx, by + Math.round(h * 0.36), w, Math.round(h * 0.64))
+      // Steeple base
+      const sb = Math.round(w * 0.28), sbx = bx + Math.round((w - sb) / 2)
+      ctx.fillRect(sbx, by + Math.round(h * 0.20), sb, Math.round(h * 0.19))
+      // Steeple spire
+      ctx.beginPath()
+      ctx.moveTo(sbx, by + Math.round(h * 0.21))
+      ctx.lineTo(bx + Math.round(w / 2), by)
+      ctx.lineTo(sbx + sb, by + Math.round(h * 0.21))
+      ctx.closePath(); ctx.fill()
+      // Cross (dark)
+      ctx.fillStyle = RUNNER_BG
+      const cw2 = Math.max(2, Math.round(w * 0.05))
+      ctx.fillRect(bx + Math.round(w / 2) - Math.round(cw2 / 2), by + Math.round(h * 0.05), cw2, Math.round(h * 0.14))
+      ctx.fillRect(bx + Math.round(w / 2) - cw2, by + Math.round(h * 0.09), cw2 * 2, cw2)
+      // Rose window
+      ctx.beginPath()
+      ctx.arc(bx + Math.round(w / 2), by + Math.round(h * 0.56), Math.round(w * 0.12), 0, Math.PI * 2)
+      ctx.fill()
+      break
+    }
+    case 'gymBuilding': {
+      ctx.fillRect(bx, by + Math.round(h * 0.30), w, Math.round(h * 0.70))
+      // Curved arched roof
+      ctx.beginPath()
+      ctx.moveTo(bx, by + Math.round(h * 0.30))
+      ctx.quadraticCurveTo(bx + Math.round(w / 2), by, bx + w, by + Math.round(h * 0.30))
+      ctx.closePath(); ctx.fill()
+      // Arched windows (dark)
+      ctx.fillStyle = RUNNER_BG
+      for (let i = 0; i < 3; i++) {
+        const wx = bx + Math.round(w * (i + 0.5) / 3) - Math.round(w * 0.09)
+        const wy = by + Math.round(h * 0.44)
+        const ww2 = Math.round(w * 0.18), wh2 = Math.round(h * 0.32)
+        ctx.fillRect(wx, wy + Math.round(wh2 * 0.35), ww2, Math.round(wh2 * 0.65))
+        ctx.beginPath()
+        ctx.arc(wx + Math.round(ww2 / 2), wy + Math.round(wh2 * 0.35), Math.round(ww2 / 2), Math.PI, 0)
+        ctx.fill()
+      }
+      break
+    }
+    case 'lectureHall': {
+      // Terraced/stepped shape (3 tiers, widest at bottom)
+      for (let i = 0; i < 3; i++) {
+        const sw3 = w - Math.round(i * w * 0.17)
+        const sh3 = Math.round(h / 3)
+        ctx.fillRect(bx + Math.round((w - sw3) / 2), by + i * sh3, sw3, sh3 + 2)
+      }
+      // Entry columns (dark)
+      ctx.fillStyle = RUNNER_BG
+      ctx.fillRect(bx + Math.round(w * 0.35), by + Math.round(h * 0.67), Math.round(w * 0.04), Math.round(h * 0.33))
+      ctx.fillRect(bx + Math.round(w * 0.61), by + Math.round(h * 0.67), Math.round(w * 0.04), Math.round(h * 0.33))
+      break
+    }
+    default: {
+      ctx.fillRect(bx, by, w, h)
+      break
+    }
   }
 
-  const [sizes, setSizes] = useState(compute)
-  useEffect(() => {
-    const handler = () => setSizes(compute())
-    window.addEventListener('resize', handler)
-    return () => window.removeEventListener('resize', handler)
-  }, [])
-
-  return sizes
+  ctx.restore()
 }
 
-function WordleGame({ onComplete, userId }) {
-  const todayStr = getTodayStr()
-  const storageKey = `campusly_wordle_${userId}_${todayStr}`
-  const dailyTarget = seededPick(WORDLE_WORDS, getDailySeed())
+// ── Student character — pixel art ────────────────────────────────
+// Grid: 8 cols × 16 rows, each "pixel" = P×P real pixels
+// Anchor: (x, y) = bottom-center (feet at ground)
+function drawStudent(ctx, x, y, frame, onGround, dead) {
+  const P  = 4
+  const L  = Math.round(x) - 4 * P   // left edge  (col 0)
+  const T  = Math.round(y) - 16 * P  // top edge   (row 0)
 
-  const loadState = () => {
-    try {
-      const s = JSON.parse(localStorage.getItem(storageKey))
-      if (s && s.target === dailyTarget) return s
-    } catch {}
-    return { board: Array(6).fill(null).map(() => Array(5).fill({ letter:'', status:'' })), currentRow:0, currentInput:'', gameOver:false, won:false, target:dailyTarget }
+  // blk(col, row, widthInUnits, heightInUnits, color)
+  const blk = (c, r, w, h, col) => {
+    ctx.fillStyle = col
+    ctx.fillRect(L + c * P, T + r * P, w * P, h * P)
   }
 
-  const [state, setState] = useState(loadState)
-  const [showResult, setShowResult] = useState(() => loadState().gameOver)
+  ctx.save()
 
-  useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(state))
-    if (state.gameOver) {
-      const score = state.won ? Math.max(10, 100 - (state.currentRow - 1) * 15) : 0
-      onComplete(state.won, score, state.currentRow)
-      setTimeout(() => setShowResult(true), 400)
-    }
-  }, [state.gameOver])
+  // ── Graduation cap ─────────────────────────────────
+  blk(2, 0, 3, 1, '#3b0764')   // cap top
+  blk(1, 1, 5, 1, '#4c1d95')   // cap body
+  blk(0, 2, 7, 1, '#3b0764')   // cap brim (full width)
+  // Gold tassel hanging off right side
+  blk(7, 1, 1, 1, '#f59e0b')
+  blk(7, 2, 1, 1, '#f59e0b')
+  blk(7, 3, 1, 1, '#d97706')   // tassel end (slightly darker)
 
-  const handleKey = useCallback((key) => {
-    setState(prev => {
-      if (prev.gameOver) return prev
-      if (key === '⌫' || key === 'Backspace') {
-        return prev.currentInput.length ? { ...prev, currentInput: prev.currentInput.slice(0,-1) } : prev
-      }
-      if (key === 'Enter' || key === 'ENTER') {
-        if (prev.currentInput.length !== 5) return prev
-        const guess = prev.currentInput.toUpperCase()
-        const statuses = evaluateGuess(guess, prev.target)
-        const newBoard = prev.board.map((row, i) =>
-          i === prev.currentRow ? guess.split('').map((letter, j) => ({ letter, status: statuses[j] })) : row
-        )
-        const won = statuses.every(s => s === 'correct')
-        const nextRow = prev.currentRow + 1
-        return { ...prev, board: newBoard, currentRow: nextRow, currentInput: '', won, gameOver: won || nextRow >= 6 }
-      }
-      if (/^[A-Za-z]$/.test(key) && prev.currentInput.length < 5) {
-        return { ...prev, currentInput: prev.currentInput + key.toUpperCase() }
-      }
-      return prev
-    })
-  }, [])
+  // ── Head (skin) ────────────────────────────────────
+  // 4 wide × 3 tall, cols 2–5, rows 3–5
+  blk(2, 3, 4, 3, '#fde68a')
 
-  useEffect(() => {
-    const h = e => handleKey(e.key)
-    window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [handleKey])
+  // ── Eyes ───────────────────────────────────────────
+  if (dead) {
+    // X eyes — two 2×2-area X marks
+    blk(2, 4, 1, 1, '#3b0764'); blk(4, 5, 1, 1, '#3b0764')   // left eye  \
+    blk(4, 4, 1, 1, '#3b0764'); blk(2, 5, 1, 1, '#3b0764')   // left eye  /
+    blk(5, 4, 1, 1, '#3b0764'); blk(6, 5, 1, 1, '#3b0764')   // right eye \  (note: overflows head bg but that's fine for effect)
+    blk(6, 4, 1, 1, '#3b0764'); blk(5, 5, 1, 1, '#3b0764')   // right eye /
+  } else {
+    blk(3, 5, 1, 1, '#3b0764')   // left eye
+    blk(5, 5, 1, 1, '#3b0764')   // right eye
+  }
 
-  const displayBoard = state.board.map((row, rIdx) => {
-    if (rIdx === state.currentRow && !state.gameOver) {
-      return state.currentInput.padEnd(5,' ').split('').map(ch => ({ letter: ch.trim(), status:'', current:true }))
-    }
-    return row.map(c => ({ ...c, current:false }))
+  // ── Body ───────────────────────────────────────────
+  blk(1, 6, 6, 4, '#8b5cf6')   // main body block
+  blk(1, 6, 1, 4, '#c4b5fd')   // bright left stripe (shirt detail)
+  blk(7, 6, 1, 3, '#5b21b6')   // backpack (right side)
+
+  // ── Legs — 4-frame running cycle + jump + dead ─────
+  // lp: 0–3 = run cycle, 4 = jump, 5 = dead
+  const lp = dead ? 5 : (onGround ? Math.floor(frame * 0.35) % 4 : 4)
+
+  switch (lp) {
+    case 0: // right leg forward, left leg back
+      blk(1, 10, 2, 5, '#6d28d9')   // left leg (back — taller, stays behind)
+      blk(4, 10, 2, 4, '#6d28d9')   // right leg (forward — shorter, extends ahead)
+      blk(0, 15, 3, 1, '#1e1b4b')   // left shoe  (back  — spread left)
+      blk(4, 14, 3, 1, '#1e1b4b')   // right shoe (forward — one row higher)
+      break
+    case 1: // legs together (mid-stride)
+    case 3:
+      blk(1, 10, 2, 5, '#6d28d9')
+      blk(4, 10, 2, 5, '#6d28d9')
+      blk(1, 15, 2, 1, '#1e1b4b')
+      blk(4, 15, 2, 1, '#1e1b4b')
+      break
+    case 2: // left leg forward, right leg back
+      blk(4, 10, 2, 5, '#6d28d9')   // right leg (back)
+      blk(1, 10, 2, 4, '#6d28d9')   // left leg (forward)
+      blk(4, 15, 3, 1, '#1e1b4b')   // right shoe (back  — spread right)
+      blk(0, 14, 3, 1, '#1e1b4b')   // left shoe  (forward — one row higher)
+      break
+    case 4: // jump — legs tucked under body
+      blk(1, 10, 2, 4, '#6d28d9')
+      blk(4, 10, 2, 4, '#6d28d9')
+      blk(0, 14, 3, 1, '#1e1b4b')   // both feet level (tucked, not reaching ground)
+      blk(4, 14, 3, 1, '#1e1b4b')
+      break
+    case 5: // dead — legs splayed outward
+      blk(0, 10, 3, 2, '#6d28d9')   // left leg sticking out left
+      blk(5, 10, 3, 2, '#6d28d9')   // right leg sticking out right
+      blk(0, 12, 3, 1, '#1e1b4b')   // left shoe
+      blk(5, 12, 3, 1, '#1e1b4b')   // right shoe
+      break
+  }
+
+  ctx.restore()
+}
+
+function RunnerGame({ onComplete, userId }) {
+  const canvasRef  = useRef(null)
+  const rafRef     = useRef(null)
+  const gsRef      = useRef(null)
+  const todayStr   = getTodayStr()
+  const storageKey = `campusly_runner_${userId}_${todayStr}`
+
+  const [phase, setPhase] = useState('idle')   // 'idle' | 'playing' | 'dead'
+  const [score, setScore] = useState(0)
+  const [best,  setBest]  = useState(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey))?.best || 0 } catch { return 0 }
   })
+  const [isNewBest, setIsNewBest] = useState(false)
 
-  const { tileSize, tileGap, tileFs } = useWordleSizes()
-  const inputRef = useRef(null)
-  const [focused, setFocused] = useState(false)
+  // ── Canvas sizing ────────────────────────────────────────────────
+  const setupCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dpr = window.devicePixelRatio || 1
+    const W   = canvas.parentElement?.clientWidth || 340
+    const H   = Math.min(230, Math.max(170, window.innerHeight * 0.30))
+    canvas.width        = Math.round(W * dpr)
+    canvas.height       = Math.round(H * dpr)
+    canvas.style.width  = W + 'px'
+    canvas.style.height = H + 'px'
+  }, [])
 
-  // Focus the hidden input to open native keyboard on mobile
-  function focusInput() { inputRef.current?.focus() }
+  useEffect(() => {
+    setupCanvas()
+    window.addEventListener('resize', setupCanvas)
+    return () => window.removeEventListener('resize', setupCanvas)
+  }, [setupCanvas])
 
-  // Handle input from the native keyboard (typed characters)
-  function onInputChange(e) {
-    const val = e.target.value
-    if (val) {
-      const ch = val[val.length - 1]
-      if (/^[A-Za-z]$/.test(ch)) handleKey(ch.toUpperCase())
+  // ── Idle frame ───────────────────────────────────────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || phase !== 'idle') return
+    const dpr = window.devicePixelRatio || 1
+    const ctx  = canvas.getContext('2d')
+    const W    = canvas.width / dpr
+    const H    = canvas.height / dpr
+    const GY   = H - 46
+    ctx.save(); ctx.scale(dpr, dpr)
+    ctx.fillStyle = RUNNER_BG; ctx.fillRect(0, 0, W, H)
+    // Ground line
+    ctx.strokeStyle = 'rgba(196,181,253,0.20)'; ctx.lineWidth = 1.5
+    ctx.beginPath(); ctx.moveTo(0, GY); ctx.lineTo(W, GY); ctx.stroke()
+    // Faint second line
+    ctx.strokeStyle = 'rgba(196,181,253,0.07)'; ctx.lineWidth = 3
+    ctx.beginPath(); ctx.moveTo(0, GY + 3); ctx.lineTo(W, GY + 3); ctx.stroke()
+    // HI score
+    ctx.font = 'bold 12px monospace'
+    ctx.fillStyle = 'rgba(196,181,253,0.25)'
+    ctx.textAlign = 'right'; ctx.textBaseline = 'top'
+    const hiStr = String(best).padStart(5, '0')
+    ctx.fillText(`HI ${hiStr}  00000`, W - 12, 10)
+    drawStudent(ctx, 68, GY, 0, true, false)
+    ctx.restore()
+  }, [phase, best])
+
+  // ── Game loop ────────────────────────────────────────────────────
+  const startGame = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dpr     = window.devicePixelRatio || 1
+    const ctx     = canvas.getContext('2d')
+    const W       = canvas.width / dpr
+    const H       = canvas.height / dpr
+    const GY      = H - 46
+    const GRAVITY = 0.58
+    const JUMP_V  = -13.5
+
+    // Ground pebbles (fixed offsets, scroll left)
+    const pebbles = Array.from({ length: 22 }, () => ({
+      ox: Math.random() * W,
+      y:  GY + 2 + Math.random() * 7,
+      r:  Math.random() * 1.4 + 0.4,
+    }))
+
+    // Clouds
+    const clouds = [
+      { x: W * 0.35, y: GY * 0.22, w: 48, h: 10 },
+      { x: W * 0.72, y: GY * 0.38, w: 36, h: 8  },
+      { x: W * 1.1,  y: GY * 0.18, w: 52, h: 11 },
+    ]
+
+    const gs = {
+      px: 68, py: GY, pvy: 0, onGround: true, frame: 0,
+      obstacles: [], speed: 4.8, score: 0, tick: 0, nextObs: 80, dead: false,
     }
-    // Always keep the input empty so every keystroke fires onChange
-    e.target.value = ''
-  }
+    gsRef.current = gs
 
-  // Handle special keys (Backspace, Enter) from native keyboard
-  function onInputKeyDown(e) {
-    if (e.key === 'Backspace') { e.preventDefault(); handleKey('⌫') }
-    if (e.key === 'Enter')     { e.preventDefault(); handleKey('ENTER') }
-  }
+    setPhase('playing')
+    setScore(0)
+    setIsNewBest(false)
+
+    function loop() {
+      gs.tick++
+      gs.score += gs.speed * 0.076
+      gs.speed  = Math.min(12, 4.8 + gs.tick * 0.0016)
+
+      // Physics
+      gs.pvy += GRAVITY
+      gs.py  += gs.pvy
+      if (gs.py >= GY) { gs.py = GY; gs.pvy = 0; gs.onGround = true }
+      if (gs.onGround) gs.frame++
+
+      // Spawn obstacles
+      gs.nextObs--
+      if (gs.nextObs <= 0) {
+        const bType = CAMPUS_BUILDINGS[Math.floor(Math.random() * CAMPUS_BUILDINGS.length)]
+        gs.obstacles.push({ ...bType, x: W + 10 })
+        gs.nextObs = Math.max(44, 100 - gs.tick * 0.038) + Math.random() * 40
+      }
+
+      // Move & cull
+      gs.obstacles.forEach(o => { o.x -= gs.speed })
+      gs.obstacles = gs.obstacles.filter(o => o.x + o.w > -10)
+
+      // Scroll pebbles
+      pebbles.forEach(p => { p.ox -= gs.speed * 0.45; if (p.ox < 0) p.ox += W })
+
+      // Scroll clouds (slow parallax)
+      clouds.forEach(c => { c.x -= gs.speed * 0.18; if (c.x + c.w < 0) c.x = W + c.w })
+
+      // ── Collision: player bottom must be above obstacle top ──────
+      // Player hitbox: bottom = gs.py, top = gs.py - 32 (body)
+      // Obstacle: top = GY - o.h, bottom = GY
+      // Vertical overlap: gs.py >= GY - o.h (player feet below obstacle top)
+      // +5 forgiveness so grazing the top corner doesn't kill you
+      const HW = 7
+      for (const o of gs.obstacles) {
+        if (
+          gs.px + HW > o.x + 3 &&
+          gs.px - HW < o.x + o.w - 3 &&
+          gs.py >= GY - o.h + 5
+        ) {
+          gs.dead = true; break
+        }
+      }
+
+      // ── Draw ─────────────────────────────────────────────────────
+      ctx.save(); ctx.scale(dpr, dpr)
+      ctx.fillStyle = RUNNER_BG; ctx.fillRect(0, 0, W, H)
+
+      // Clouds
+      ctx.fillStyle = 'rgba(196,181,253,0.08)'
+      clouds.forEach(c => {
+        rrect(ctx, c.x, c.y, c.w, c.h, 5); ctx.fill()
+        rrect(ctx, c.x + c.w * 0.2, c.y - c.h * 0.5, c.w * 0.55, c.h * 0.8, 5); ctx.fill()
+      })
+
+      // Speed streaks (appear at higher speed)
+      if (gs.speed > 7.5) {
+        const alpha = Math.min(0.22, (gs.speed - 7.5) / 18)
+        ctx.strokeStyle = `rgba(196,181,253,${alpha})`
+        ctx.lineWidth = 1
+        const streaks = [-28, -40, -52]
+        streaks.forEach(dx => {
+          ctx.beginPath(); ctx.moveTo(gs.px + dx, gs.py - 18); ctx.lineTo(gs.px + dx + 12, gs.py - 18); ctx.stroke()
+          ctx.beginPath(); ctx.moveTo(gs.px + dx + 2, gs.py - 28); ctx.lineTo(gs.px + dx + 10, gs.py - 28); ctx.stroke()
+        })
+      }
+
+      // Buildings
+      gs.obstacles.forEach(o => drawBldg(ctx, o.type, o.x, GY, o.w, o.h, RUNNER_FILL))
+
+      // Student
+      drawStudent(ctx, gs.px, gs.py, gs.frame, gs.onGround, false)
+
+      // Ground
+      ctx.strokeStyle = 'rgba(196,181,253,0.22)'; ctx.lineWidth = 1.5
+      ctx.beginPath(); ctx.moveTo(0, GY); ctx.lineTo(W, GY); ctx.stroke()
+      ctx.strokeStyle = 'rgba(196,181,253,0.07)'; ctx.lineWidth = 3
+      ctx.beginPath(); ctx.moveTo(0, GY + 3); ctx.lineTo(W, GY + 3); ctx.stroke()
+
+      // Ground pebbles
+      ctx.fillStyle = 'rgba(196,181,253,0.20)'
+      pebbles.forEach(p => { ctx.beginPath(); ctx.arc(p.ox, p.y, p.r, 0, Math.PI * 2); ctx.fill() })
+
+      // HI + score (top-right, Chrome-Dino style)
+      ctx.font = 'bold 12px monospace'
+      ctx.textAlign = 'right'; ctx.textBaseline = 'top'
+      ctx.fillStyle = 'rgba(196,181,253,0.25)'
+      const hiStr  = String(best).padStart(5, '0')
+      const scStr  = String(Math.floor(gs.score)).padStart(5, '0')
+      ctx.fillText(`HI ${hiStr}  ${scStr}`, W - 12, 10)
+
+      ctx.restore()
+      // ── End draw ──────────────────────────────────────────────────
+
+      if (!gs.dead) {
+        setScore(Math.floor(gs.score))
+        rafRef.current = requestAnimationFrame(loop)
+      } else {
+        // Draw final frame: dead student + GAME OVER overlay
+        ctx.save(); ctx.scale(dpr, dpr)
+
+        // Redraw scene with dead student
+        ctx.fillStyle = RUNNER_BG; ctx.fillRect(0, 0, W, H)
+        clouds.forEach(c => {
+          ctx.fillStyle = 'rgba(196,181,253,0.08)'
+          rrect(ctx, c.x, c.y, c.w, c.h, 5); ctx.fill()
+          rrect(ctx, c.x + c.w * 0.2, c.y - c.h * 0.5, c.w * 0.55, c.h * 0.8, 5); ctx.fill()
+        })
+        gs.obstacles.forEach(o => drawBldg(ctx, o.type, o.x, GY, o.w, o.h, RUNNER_FILL))
+        drawStudent(ctx, gs.px, gs.py, gs.frame, gs.onGround, true)
+        ctx.strokeStyle = 'rgba(196,181,253,0.22)'; ctx.lineWidth = 1.5
+        ctx.beginPath(); ctx.moveTo(0, GY); ctx.lineTo(W, GY); ctx.stroke()
+        pebbles.forEach(p => { ctx.beginPath(); ctx.arc(p.ox, p.y, p.r, 0, Math.PI * 2); ctx.fill() })
+
+        // Semi-transparent dim
+        ctx.fillStyle = 'rgba(14,14,26,0.62)'; ctx.fillRect(0, 0, W, H)
+
+        // GAME OVER text
+        const fontSize = Math.max(16, Math.round(W * 0.058))
+        ctx.font = `bold ${fontSize}px monospace`
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillStyle = RUNNER_FILL
+        ctx.fillText('GAME OVER', W / 2, H / 2 - 10)
+        ctx.font = `${Math.max(11, Math.round(W * 0.036))}px monospace`
+        ctx.fillStyle = 'rgba(196,181,253,0.55)'
+        ctx.fillText(`${Math.floor(gs.score)}m`, W / 2, H / 2 + 14)
+
+        ctx.restore()
+
+        const finalScore = Math.floor(gs.score)
+        setScore(finalScore)
+
+        let storedBest = 0
+        try { storedBest = JSON.parse(localStorage.getItem(storageKey))?.best || 0 } catch {}
+        const newBest = Math.max(storedBest, finalScore)
+        localStorage.setItem(storageKey, JSON.stringify({ best: newBest, played: true }))
+        setBest(newBest)
+        setIsNewBest(finalScore > storedBest && finalScore > 0)
+
+        onComplete(true, Math.floor(finalScore / 10), finalScore)
+        setPhase('dead')
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(loop)
+  }, [best, onComplete, storageKey])
+
+  useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }, [])
+
+  // ── Input ────────────────────────────────────────────────────────
+  const handleAction = useCallback(() => {
+    if (phase === 'idle' || phase === 'dead') { startGame() }
+    else if (gsRef.current?.onGround) {
+      gsRef.current.pvy = -13.5
+      gsRef.current.onGround = false
+    }
+  }, [phase, startGame])
+
+  useEffect(() => {
+    const onKey = e => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); handleAction() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [handleAction])
 
   return (
-    <div
-      onClick={focusInput}
-      style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:tileGap, width:'100%', cursor:'text' }}
-    >
-      {/* Hidden input — captures native keyboard on mobile */}
-      <input
-        ref={inputRef}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        onChange={onInputChange}
-        onKeyDown={onInputKeyDown}
-        autoCapitalize="none"
-        autoComplete="off"
-        autoCorrect="off"
-        spellCheck={false}
-        inputMode="text"
-        style={{ position:'absolute', opacity:0, width:1, height:1, pointerEvents:'none', zIndex:-1 }}
-      />
-      {/* Game-over overlay — click anywhere to dismiss */}
-      {showResult && (
-        <div onClick={() => setShowResult(false)} style={{
-          position:'fixed', inset:0, zIndex:200,
-          background:'rgba(0,0,0,0.55)', backdropFilter:'blur(6px)',
-          display:'flex', alignItems:'center', justifyContent:'center',
-          cursor:'pointer',
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background:'rgba(18,16,36,0.97)', border:`1px solid ${state.won ? '#22c55e55' : '#ef444455'}`,
-            borderRadius:20, padding:'32px 36px', textAlign:'center', maxWidth:320,
-            boxShadow:'0 24px 80px rgba(0,0,0,0.6)',
-          }}>
-            <div style={{ fontSize:48, marginBottom:12 }}>{state.won ? '🎉' : '😔'}</div>
-            <div style={{ fontFamily:'var(--font-display)', fontWeight:700, fontSize:18, color: state.won ? '#22c55e' : '#ef4444', marginBottom:8 }}>
-              {state.won ? `Solved in ${state.currentRow} ${state.currentRow === 1 ? 'try' : 'tries'}!` : 'Better luck tomorrow!'}
-            </div>
-            <div style={{ fontSize:14, color:'var(--text-2)', marginBottom:16, letterSpacing:'0.06em' }}>
-              The word was{' '}
-              <span style={{ fontWeight:800, color:'var(--text)', fontSize:20, letterSpacing:'0.18em', display:'block', marginTop:6 }}>
-                {state.target}
-              </span>
-            </div>
-            {state.won && <div style={{ fontSize:12, color:'#22c55e', marginBottom:16 }}>+{Math.max(10, 100-(state.currentRow-1)*15)} pts</div>}
-            <div style={{ fontSize:11, color:'var(--text-3)' }}>tap anywhere to close</div>
-          </div>
-        </div>
-      )}
+    <div style={{ width:'100%', userSelect:'none' }}>
+      <div style={{ position:'relative', borderRadius:14, overflow:'hidden', border:'1px solid rgba(196,181,253,0.12)', background: RUNNER_BG }}>
+        <canvas
+          ref={canvasRef}
+          onClick={handleAction}
+          onTouchStart={e => { e.preventDefault(); handleAction() }}
+          style={{ display:'block', cursor:'pointer', touchAction:'manipulation', WebkitTapHighlightColor:'transparent' }}
+        />
 
-      {/* Board */}
-      <div style={{ display:'flex', flexDirection:'column', gap:tileGap }}>
-        {displayBoard.map((row, rIdx) => (
-          <div key={rIdx} style={{ display:'flex', gap:tileGap }}>
-            {row.map((cell, cIdx) => (
-              <div key={cIdx} style={{
-                width:tileSize, height:tileSize, borderRadius:8,
-                border: `2px solid ${cell.status ? 'transparent' : cell.letter ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.10)'}`,
-                background: TILE_STATUS_BG[cell.status],
-                display:'flex', alignItems:'center', justifyContent:'center',
-                fontFamily:'var(--font-display)', fontWeight:800, fontSize:tileFs, color:'white',
-                transition:'background 0.3s, border-color 0.15s',
-              }}>
-                {cell.letter}
-              </div>
-            ))}
+        {/* Idle overlay */}
+        {phase === 'idle' && (
+          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8, pointerEvents:'none' }}>
+            <div style={{ fontFamily:'monospace', fontWeight:700, fontSize:13, color:'rgba(196,181,253,0.75)', letterSpacing:'0.12em' }}>CAMPUS RUN</div>
+            <div style={{ fontSize:11, color:'rgba(196,181,253,0.35)', fontFamily:'monospace' }}>TAP OR PRESS SPACE</div>
           </div>
-        ))}
+        )}
+
+        {/* Dead overlay — just the retry button; score/GAME OVER drawn on canvas */}
+        {phase === 'dead' && (
+          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-end', paddingBottom:22 }}>
+            {isNewBest && (
+              <div style={{ fontFamily:'monospace', fontSize:11, color:'#86efac', letterSpacing:'0.10em', marginBottom:10 }}>
+                NEW BEST!
+              </div>
+            )}
+            <button
+              onClick={e => { e.stopPropagation(); startGame() }}
+              style={{
+                padding:'7px 30px', borderRadius:20,
+                border:'1px solid rgba(196,181,253,0.30)',
+                background:'rgba(196,181,253,0.10)',
+                color:'rgba(196,181,253,0.90)',
+                fontFamily:'monospace', fontWeight:700, fontSize:12, letterSpacing:'0.08em',
+                cursor:'pointer',
+              }}
+            >
+              RETRY
+            </button>
+          </div>
+        )}
+
+        {/* Hint during play */}
+        {phase === 'playing' && (
+          <div style={{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)', fontSize:10, color:'rgba(196,181,253,0.22)', fontFamily:'monospace', pointerEvents:'none', whiteSpace:'nowrap' }}>
+            tap · space · ↑ to jump
+          </div>
+        )}
       </div>
 
-      {/* Tap-to-type hint */}
-      {!state.gameOver && (
-        <div style={{
-          fontSize:12, color: focused ? 'var(--campus)' : 'var(--text-3)',
-          border: `1px solid ${focused ? 'var(--campus-border)' : 'rgba(255,255,255,0.10)'}`,
-          borderRadius:20, padding:'6px 18px',
-          background: focused ? 'var(--campus-dim)' : 'transparent',
-          transition:'all 0.2s', userSelect:'none',
-        }}>
-          {focused ? '⌨ typing…' : 'tap here · then type'}
-        </div>
-      )}
+      {/* Below-canvas best score */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 4px 0' }}>
+        <div style={{ fontSize:11, color:'var(--text-3)' }}>Dodge campus buildings as far as you can</div>
+        {best > 0 && (
+          <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:'monospace' }}>
+            best <span style={{ color:'#c4b5fd', fontWeight:700 }}>{best}m</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -694,9 +1078,9 @@ function Leaderboard({ profile, scores, refreshKey }) {
 // ── Main page ───────────────────────────────────────────────────
 
 const GAME_META = [
-  { id:'wordle',  name:'Campus Wordle',  emoji:'🔤', desc:'Guess the 5-letter campus word in 6 tries', color:'#22c55e' },
-  { id:'connect', name:'Word Connect',   emoji:'🔗', desc:'Group 16 campus words into 4 categories',   color:'#60a5fa' },
-  { id:'quiz',    name:'Campus Quiz',    emoji:'🎓', desc:'5 daily questions about campus life',        color:'#f59e0b' },
+  { id:'runner',  name:'Campus Run',    emoji:'🏃', desc:'Dodge your way through the campus buildings', color:'#22c55e' },
+  { id:'connect', name:'Word Connect',  emoji:'🔗', desc:'Group 16 campus words into 4 categories',               color:'#60a5fa' },
+  { id:'quiz',    name:'Campus Quiz',   emoji:'🎓', desc:'5 daily questions about campus life',                    color:'#f59e0b' },
 ]
 
 async function upsertGameScore(profile, scores) {
@@ -705,7 +1089,7 @@ async function upsertGameScore(profile, scores) {
     user_id:       profile.id,
     domain:        profile.domain,
     score_date:    getTodayStr(),
-    wordle_score:  scores.wordle  ?? 0,
+    wordle_score:  scores.runner  ?? 0,   // reuse column for runner score
     connect_score: scores.connect ?? 0,
     quiz_score:    scores.quiz    ?? 0,
     updated_at:    new Date().toISOString(),
@@ -726,8 +1110,8 @@ export default function DailyGames() {
     const uid = profile.id
     const s = {}
     try {
-      const w = JSON.parse(localStorage.getItem(`campusly_wordle_${uid}_${todayStr}`))
-      if (w?.gameOver) s.wordle = w.won ? Math.max(10, 100-(w.currentRow-1)*15) : 0
+      const r = JSON.parse(localStorage.getItem(`campusly_runner_${uid}_${todayStr}`))
+      if (r?.played) s.runner = Math.floor((r.best || 0) / 10)
     } catch {}
     try {
       const c = JSON.parse(localStorage.getItem(`campusly_connect_${uid}_${todayStr}`))
@@ -741,7 +1125,10 @@ export default function DailyGames() {
   }, [profile?.id, todayStr])
 
   async function handleComplete(gameId, won, score) {
-    const newScores = { ...scores, [gameId]: score }
+    // For runner: always keep the best score of the day, never overwrite with a worse run
+    const prevBest = gameId === 'runner' ? (scores.runner || 0) : undefined
+    const kept     = prevBest !== undefined ? Math.max(prevBest, score) : score
+    const newScores = { ...scores, [gameId]: kept }
     setScores(newScores)
     await upsertGameScore(profile, newScores)
     setLeaderRefresh(n => n + 1)
@@ -753,7 +1140,9 @@ export default function DailyGames() {
   // Mobile full-screen game overlay — portalled to document.body so it escapes
   // the <main overflowY:auto> container that breaks position:fixed on iOS Safari.
   const activeGameMeta = GAME_META.find(g => g.id === activeGame)
-  const mobileOverlay = isMobile && activeGameMeta && !scores[activeGameMeta.id]
+  // Runner stays open for unlimited replays; other games close once completed
+  const showOverlay = isMobile && activeGameMeta && (activeGame === 'runner' || !scores[activeGameMeta.id])
+  const mobileOverlay = showOverlay
     ? createPortal(
         <div style={{ position:'fixed', top:54, left:0, right:0, bottom:0, zIndex:250, background:'#070710', display:'flex', flexDirection:'column', overflow:'hidden' }}>
           {/* Header */}
@@ -765,9 +1154,9 @@ export default function DailyGames() {
               <div style={{ fontSize:11, color:'var(--text-3)' }}>{activeGameMeta.desc}</div>
             </div>
           </div>
-          {/* Centered game */}
-          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', overflowX:'hidden', overflowY:'auto', padding:'8px 12px' }}>
-            {activeGame === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle',  won, score); setActiveGame(null) }} />}
+          {/* Game content */}
+          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', overflowX:'hidden', overflowY:'auto', padding:'16px 14px' }}>
+            {activeGame === 'runner'  && <RunnerGame  userId={profile?.id} onComplete={(won, score) => handleComplete('runner',  won, score)} />}
             {activeGame === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
             {activeGame === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz',    won, score); setActiveGame(null) }} />}
           </div>
@@ -825,15 +1214,17 @@ export default function DailyGames() {
           {/* Game cards */}
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             {GAME_META.map((game, i) => {
-              const done = scores[game.id] !== undefined
-              const open = activeGame === game.id
+              const isRunner = game.id === 'runner'
+              const done     = !isRunner && scores[game.id] !== undefined
+              const open     = activeGame === game.id
+              const canPlay  = isRunner || !done
               return (
                 <div key={game.id} className="fade-up" style={{ animationDelay:`${i*0.06}s` }}>
                   {/* Card header */}
                   <div
-                    onClick={() => !done && setActiveGame(open ? null : game.id)}
-                    style={{ ...panel, padding: isMobile ? '12px 14px' : '18px 20px', cursor: done ? 'default' : 'pointer', transition:'all 0.15s' }}
-                    onMouseEnter={e => { if(!done) e.currentTarget.style.borderColor='rgba(255,255,255,0.18)' }}
+                    onClick={() => canPlay && setActiveGame(open ? null : game.id)}
+                    style={{ ...panel, padding: isMobile ? '12px 14px' : '18px 20px', cursor: canPlay ? 'pointer' : 'default', transition:'all 0.15s' }}
+                    onMouseEnter={e => { if(canPlay) e.currentTarget.style.borderColor='rgba(255,255,255,0.18)' }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.10)' }}
                   >
                     <div style={{ display:'flex', alignItems:'center', gap:14 }}>
@@ -844,7 +1235,15 @@ export default function DailyGames() {
                         <div style={{ fontFamily:'var(--font-display)', fontWeight:700, fontSize:15 }}>{game.name}</div>
                         <div style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>{game.desc}</div>
                       </div>
-                      {done ? (
+                      {/* Runner: always show score + play button if has score */}
+                      {isRunner && scores[game.id] !== undefined ? (
+                        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                          <button onClick={e => { e.stopPropagation(); setActiveGame(open ? null : game.id) }} style={{
+                            padding:'5px 14px', borderRadius:20, border:`1px solid ${game.color}44`,
+                            background:`${game.color}10`, color: game.color, fontFamily:'var(--font-display)', fontWeight:700, fontSize:11, cursor:'pointer',
+                          }}>Play Again</button>
+                        </div>
+                      ) : done ? (
                         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
                           <div style={{ width:34, height:34, borderRadius:'50%', background:'rgba(34,197,94,0.15)', border:'1px solid rgba(34,197,94,0.35)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>✓</div>
                           <div style={{ fontSize:10, color:'#22c55e', fontFamily:'var(--font-display)', fontWeight:700 }}>+{scores[game.id]}</div>
@@ -861,10 +1260,10 @@ export default function DailyGames() {
                     </div>
                   </div>
 
-                  {/* Desktop inline game panel (mobile uses the portal overlay above) */}
-                  {open && !done && !isMobile && (
-                    <div className="game-panel" style={{ ...panel, marginTop:6, padding:'28px 24px', borderRadius:16 }}>
-                      {game.id === 'wordle'  && <WordleGame  userId={profile?.id} onComplete={(won, score) => { handleComplete('wordle',  won, score); setActiveGame(null) }} />}
+                  {/* Desktop inline game panel */}
+                  {open && canPlay && !isMobile && (
+                    <div className="game-panel" style={{ ...panel, marginTop:6, padding:'20px 20px', borderRadius:16 }}>
+                      {game.id === 'runner'  && <RunnerGame  userId={profile?.id} onComplete={(won, score) => handleComplete('runner',  won, score)} />}
                       {game.id === 'connect' && <ConnectGame userId={profile?.id} onComplete={(won, score) => { handleComplete('connect', won, score); setActiveGame(null) }} />}
                       {game.id === 'quiz'    && <QuizGame    userId={profile?.id} onComplete={(won, score) => { handleComplete('quiz',    won, score); setActiveGame(null) }} />}
                     </div>
